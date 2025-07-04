@@ -54,6 +54,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     if (user?.role === 'admin') {
       return [
         { name: 'Dashboard', path: '/dashboard', icon: Home },
+        { name: 'Admin Panel', path: '/admin', icon: Shield },
         { name: 'All Courses', path: '/courses', icon: BookOpen },
         { name: 'User Management', path: '/admin/users', icon: Users },
         { name: 'Course Management', path: '/admin/courses', icon: GraduationCap },
