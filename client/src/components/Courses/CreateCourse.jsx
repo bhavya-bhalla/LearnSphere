@@ -24,7 +24,9 @@ import {
   Trash2,
   CheckCircle,
   AlertCircle,
+  Send,
 } from 'lucide-react';
+import { eventBus, EVENTS } from '../../utils/eventBus';
 import toast from 'react-hot-toast';
 
 const CreateCourse = () => {
@@ -77,6 +79,7 @@ const CreateCourse = () => {
   const [courseImage, setCourseImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(new Set());
+  const [submissionStatus, setSubmissionStatus] = useState('draft'); // draft, submitting, submitted
 
   const categories = [
     'Web Development',
@@ -310,7 +313,8 @@ const CreateCourse = () => {
     }
   };
 
-  const handleSaveCourse = () => {
+  // UPDATED: Submit course for admin approval instead of direct publishing
+  const handleSubmitForApproval = () => {
     if (!courseData.title || !courseData.category || !courseData.description) {
       toast.error('Please fill in all required fields');
       return;
@@ -328,29 +332,56 @@ const CreateCourse = () => {
       return;
     }
 
-    // Mock save operation
+    setSubmissionStatus('submitting');
+
+    // Create course object for admin approval
     const newCourse = {
       id: Date.now(),
       ...courseData,
       instructor: user?.name,
       instructorId: user?.id,
       enrolledStudents: 0,
-      status: 'active',
-      createdAt: new Date().toISOString(),
+      status: 'pending', // Changed from 'active' to 'pending'
+      submittedAt: new Date().toISOString(), // Add submission timestamp
+      submittedBy: user?.name,
       modules: modules.filter(module => module.title),
       image: imagePreview || 'https://images.pexels.com/photos/5905709/pexels-photo-5905709.jpeg?auto=compress&cs=tinysrgb&w=800',
     };
 
-    // Add to localStorage for demo purposes
-    const existingCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    existingCourses.push(newCourse);
-    localStorage.setItem('courses', JSON.stringify(existingCourses));
+    // Add to pending courses for admin approval
+    const pendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
+    pendingCourses.push(newCourse);
+    localStorage.setItem('pendingCourses', JSON.stringify(pendingCourses));
 
-    toast.success('Course created successfully!');
-    navigate('/courses');
+    // Emit event for real-time updates
+    eventBus.emit(EVENTS.COURSE_CREATED, newCourse);
+
+    setSubmissionStatus('submitted');
+    toast.success('Course submitted for admin approval!');
+    
+    // Show success message and redirect after delay
+    setTimeout(() => {
+      navigate('/courses');
+    }, 2000);
   };
 
   const handleSaveDraft = () => {
+    // Save as draft in localStorage
+    const draftCourse = {
+      id: Date.now(),
+      ...courseData,
+      instructor: user?.name,
+      instructorId: user?.id,
+      status: 'draft',
+      modules: modules.filter(module => module.title),
+      image: imagePreview,
+      savedAt: new Date().toISOString(),
+    };
+
+    const drafts = JSON.parse(localStorage.getItem('courseDrafts') || '[]');
+    drafts.push(draftCourse);
+    localStorage.setItem('courseDrafts', JSON.stringify(drafts));
+
     toast.success('Course saved as draft');
   };
 
@@ -672,6 +703,52 @@ const CreateCourse = () => {
     }
   };
 
+  // Show submission success state
+  if (submissionStatus === 'submitted') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/courses')}
+            className="flex items-center text-secondary-600 hover:text-secondary-900"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Courses
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-secondary-200 text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <CheckCircle className="h-10 w-10 text-green-600" />
+          </div>
+          
+          <h2 className="text-2xl font-bold text-secondary-900 mb-2">Course Submitted Successfully!</h2>
+          <p className="text-secondary-600 mb-6">
+            Your course "{courseData.title}" has been submitted for admin approval. 
+            You will be notified once the review is complete.
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
+            <ul className="text-sm text-blue-700 space-y-1 text-left">
+              <li>• Admin will review your course content and structure</li>
+              <li>• You'll receive notification about approval status</li>
+              <li>• Once approved, students can enroll in your course</li>
+              <li>• You can make updates to approved courses anytime</li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => navigate('/courses')}
+            className="btn-primary"
+          >
+            Back to My Courses
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -691,17 +768,42 @@ const CreateCourse = () => {
           <button
             onClick={handleSaveDraft}
             className="btn-secondary flex items-center space-x-2"
+            disabled={submissionStatus === 'submitting'}
           >
             <Save className="h-4 w-4" />
             <span>Save Draft</span>
           </button>
           <button
-            onClick={handleSaveCourse}
+            onClick={handleSubmitForApproval}
             className="btn-primary flex items-center space-x-2"
+            disabled={submissionStatus === 'submitting'}
           >
-            <Save className="h-4 w-4" />
-            <span>Publish Course</span>
+            {submissionStatus === 'submitting' ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span>Submit for Approval</span>
+              </>
+            )}
           </button>
+        </div>
+      </div>
+
+      {/* Admin Approval Notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start space-x-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Course Approval Process</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              All new courses must be approved by an administrator before they become available to students. 
+              This ensures quality and consistency across our platform.
+            </p>
+          </div>
         </div>
       </div>
 
