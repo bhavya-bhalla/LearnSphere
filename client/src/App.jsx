@@ -23,6 +23,7 @@ import StudentList from './components/Students/StudentList';
 import Analytics from './components/Analytics/Analytics.jsx';
 import GradesList from './components/Grades/GradesList';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import Unauthorized from './components/Auth/Unauthorized'; // new import
 
 function App() {
   return (
@@ -33,8 +34,9 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
-            {/* Protected Routes */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
+            {/* Protected Routes (Role: any authenticated user) */}
             <Route
               path="/dashboard"
               element={
@@ -59,27 +61,39 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Instructor-only Routes */}
             <Route
               path="/create-course"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['instructor']}>
                   <CreateCourse />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/assignments"
-              element={
-                <ProtectedRoute>
-                  <AssignmentList />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/assignments/create"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['instructor']}>
                   <CreateAssignment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quizzes/create"
+              element={
+                <ProtectedRoute allowedRoles={['instructor']}>
+                  <CreateQuiz />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Other Protected Routes */}
+            <Route
+              path="/assignments"
+              element={
+                <ProtectedRoute>
+                  <AssignmentList />
                 </ProtectedRoute>
               }
             />
@@ -104,14 +118,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <QuizList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/quizzes/create"
-              element={
-                <ProtectedRoute>
-                  <CreateQuiz />
                 </ProtectedRoute>
               }
             />
@@ -163,14 +169,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
-            {/* Redirect root to dashboard */}
+
+            {/* Redirects */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* Catch all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Layout>
+
+        {/* Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{

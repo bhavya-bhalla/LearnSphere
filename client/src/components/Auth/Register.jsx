@@ -20,10 +20,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -44,13 +41,21 @@ const Register = () => {
         role: formData.role,
       });
 
-      if (res.data?.token) {
-        localStorage.setItem('token', res.data.token);
-        toast.success('Account created successfully! Please log in.');
-        navigate('/login');
+      const { token, user } = res.data;
+
+      if (!token || !user) {
+        toast.error('Registration failed. Invalid response.');
+        return;
       }
+
+      // Optionally save token (if auto-login is needed)
+      // localStorage.setItem('token', token);
+
+      toast.success('Account created successfully! Please log in.');
+      navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Registration failed');
+      const msg = error.response?.data?.message || 'Registration failed';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -126,6 +131,7 @@ const Register = () => {
             >
               <option value="student">Student</option>
               <option value="instructor">Instructor</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
 
@@ -185,25 +191,24 @@ const Register = () => {
 
           {/* Terms */}
           <div className="flex items-center">
-  <input
-    id="terms"
-    name="terms"
-    type="checkbox"
-    required
-    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
-  />
-  <label htmlFor="terms" className="ml-2 block text-sm text-secondary-700">
-    I agree to the{' '}
-    <Link to="/terms" className="text-primary-600 hover:text-primary-500">
-      Terms of Service
-    </Link>{' '}
-    and{' '}
-    <Link to="/privacy" className="text-primary-600 hover:text-primary-500">
-      Privacy Policy
-    </Link>
-  </label>
-</div>
-
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              required
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+            />
+            <label htmlFor="terms" className="ml-2 block text-sm text-secondary-700">
+              I agree to the{' '}
+              <Link to="/terms" className="text-primary-600 hover:text-primary-500">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="text-primary-600 hover:text-primary-500">
+                Privacy Policy
+              </Link>
+            </label>
+          </div>
 
           {/* Submit Button */}
           <button

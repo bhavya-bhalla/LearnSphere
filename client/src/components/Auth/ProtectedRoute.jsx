@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { loginSuccess } from '../../store/slices/authSlice';
 import axios from 'axios';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -29,10 +29,14 @@ const ProtectedRoute = ({ children }) => {
     checkAuth();
   }, [dispatch, user]);
 
-  if (checkingAuth) return null; // or show a spinner
+  if (checkingAuth) return null; // or <LoadingSpinner />
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

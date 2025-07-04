@@ -1,67 +1,81 @@
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const User = require('../models/user');
 
-// Generate JWT Token
+const SECRET_KEY = process.env.JWT_SECRET || 'fallback_secret_key';
+
+// 🔐 Generate JWT token
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    SECRET_KEY,
+    { expiresIn: '1h' }
   );
 };
 
-// Register Controller
+// 👤 Register a new user
 exports.register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
   try {
-    // Create User
-    const user = await User.create({ name, email, password, role });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
 
-    // Generate token
-    const token = generateToken(user);
+    // ⛔️ Don't hash manually — schema will handle it
+    const newUser = new User({ name, email, password, role });
+    await newUser.save();
 
-    // Return safe user info only
+    const token = generateToken(newUser);
+
     res.status(201).json({
-      message: 'Registration successful',
+      token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
       },
-      token
     });
   } catch (err) {
-    console.error('Registration Error:', err);
-    res.status(400).json({ error: err.message });
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Internal server error during registration' });
   }
 };
 
-// Login Controller
+// 🔑 Login existing user
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
   try {
     const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // ✅ Use comparePassword method from schema
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
 
     const token = generateToken(user);
 
     res.status(200).json({
-      message: 'Login successful',
+      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
       },
-      token
     });
   } catch (err) {
-    console.error('Login Error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Internal server error during login' });
   }
 };
