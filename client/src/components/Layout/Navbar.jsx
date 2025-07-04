@@ -31,9 +31,9 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
     }
   };
 
-  // ✅ Google Translate Integration
+  // ✅ Inject Google Translate
   useEffect(() => {
-    const addTranslateScript = () => {
+    const addGoogleTranslateScript = () => {
       if (!document.querySelector('#google-translate-script')) {
         const script = document.createElement('script');
         script.id = 'google-translate-script';
@@ -53,15 +53,16 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
       };
     };
 
-    addTranslateScript();
+    addGoogleTranslateScript();
   }, []);
 
   return (
     <nav className="navbar-fixed bg-white shadow-lg border-b border-secondary-200">
       <div className="navbar-container">
-        <div className="navbar-content flex items-center justify-between px-4 py-2">
-          {/* Logo and Google Translate */}
+        <div className="navbar-content">
+          {/* Logo + Translate */}
           <div className="flex items-center space-x-3">
+            {/* Mobile sidebar toggle - only show when authenticated */}
             {isAuthenticated && (
               <button
                 onClick={toggleSidebar}
@@ -71,28 +72,29 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
               </button>
             )}
 
-            <Link
-              to={isAuthenticated ? "/dashboard" : "/"}
-              className="flex items-center space-x-2"
-            >
-              <div className="bg-primary-600 p-2 rounded-full">
-                <BookOpen className="h-6 w-6 text-white" /> {/* Only one G-like icon now */}
-              </div>
-              <span className="text-lg font-semibold text-secondary-900">
-                LearnSphere
-              </span>
-            </Link>
+            {/* Logo and Translate */}
+            <div className="flex items-center space-x-2">
+              <Link
+                to={isAuthenticated ? "/dashboard" : "/"}
+                className="logo-container flex items-center space-x-2"
+              >
+                <div className="logo-icon">
+                  <BookOpen className="h-6 w-6 text-white" />
+                </div>
+                <span className="logo-text text-lg font-semibold text-secondary-900">LearnSphere</span>
+              </Link>
 
-            {/* Google Translate Widget */}
-            <div id="google_translate_element" className="ml-4 hidden sm:block" />
+              {/* Google Translate Dropdown */}
+              <div id="google_translate_element" className="ml-1" />
+            </div>
           </div>
 
-          {/* Right Side */}
-          <div className="flex items-center space-x-4">
+          {/* Right side actions */}
+          <div className="nav-actions">
             {isAuthenticated ? (
               <>
                 {/* Search */}
-                <div className="hidden md:block">
+                <div className="search-container">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
                     <input
@@ -106,29 +108,24 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 {/* Notifications */}
                 <Link
                   to="/notifications"
-                  className="relative text-secondary-600 hover:text-primary-600"
+                  className="notification-button relative text-secondary-600 hover:text-primary-600 transition-colors duration-200"
                 >
                   <Bell className="h-5 w-5" />
                   <span className="notification-badge">3</span>
                 </Link>
 
                 {/* Profile Dropdown */}
-                <div className="relative">
+                <div className="profile-dropdown">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center space-x-2"
+                    className="profile-button"
                   >
                     <img
-                      src={
-                        user?.avatar ||
-                        'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'
-                      }
+                      src={user?.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'}
                       alt={user?.name}
-                      className="h-8 w-8 rounded-full object-cover"
+                      className="profile-avatar"
                     />
-                    <span className="hidden sm:block text-sm font-medium">
-                      {user?.name}
-                    </span>
+                    <span className="profile-name">{user?.name}</span>
                   </button>
 
                   {isProfileOpen && (
@@ -137,32 +134,32 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                         className="fixed inset-0 z-40"
                         onClick={() => setIsProfileOpen(false)}
                       />
-                      <div className="absolute right-0 mt-2 w-48 bg-white shadow-md rounded-md z-50">
-                        <div className="px-4 py-2 border-b text-sm text-secondary-700">
-                          <div className="font-semibold">{user?.name}</div>
-                          <div className="text-xs capitalize">{user?.role}</div>
+                      <div className="dropdown-menu">
+                        <div className="px-4 py-2 border-b border-secondary-200">
+                          <p className="text-sm font-medium text-secondary-900">{user?.name}</p>
+                          <p className="text-xs text-secondary-500 capitalize">{user?.role}</p>
                         </div>
                         <Link
                           to="/profile"
-                          className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
+                          className="flex items-center px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100 transition-colors duration-200"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <User className="inline mr-2 h-4 w-4" />
+                          <User className="h-4 w-4 mr-2" />
                           Profile
                         </Link>
                         <Link
                           to="/settings"
-                          className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
+                          className="flex items-center px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100 transition-colors duration-200"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <Settings className="inline mr-2 h-4 w-4" />
+                          <Settings className="h-4 w-4 mr-2" />
                           Settings
                         </Link>
                         <button
                           onClick={handleLogout}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
                         >
-                          <LogOut className="inline mr-2 h-4 w-4" />
+                          <LogOut className="h-4 w-4 mr-2" />
                           Logout
                         </button>
                       </div>
@@ -171,20 +168,21 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 </div>
               </>
             ) : (
-              <>
+              // Public user
+              <div className="flex items-center space-x-4">
                 <Link
                   to="/login"
-                  className="text-secondary-600 hover:text-primary-600 text-sm font-medium"
+                  className="text-secondary-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="btn-primary text-sm px-4 py-2 rounded-md"
+                  className="btn-primary text-sm"
                 >
                   Sign Up
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>
