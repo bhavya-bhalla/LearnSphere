@@ -658,3 +658,20 @@ input[type="file"].input-field::-webkit-file-upload-button:hover {
   color: #374151;
   font-weight: 600;
 }
+/* 👇 Clean up Google Translate Widget */
+.goog-logo-link,
+.goog-te-gadget span {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  font-size: 0 !important;
+}
+
+.goog-te-combo {
+  font-size: 14px !important;
+  padding: 4px 6px;
+  margin-left: 4px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
