@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { mockUsers, mockCourses } from '../../utils/mockData';
 
@@ -28,14 +29,14 @@ const StudentList = () => {
   const [performanceFilter, setPerformanceFilter] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Mock student data with progress
+  // Mock student data with progress - ONLY for instructor's courses
   const mockStudentData = [
     {
       id: 5,
       name: 'John Smith',
       email: 'john.smith@student.learnsphere.com',
       avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150',
-      enrolledCourses: [1, 2],
+      enrolledCourses: [1], // Only enrolled in course 1 (React course)
       joinDate: '2023-09-01',
       status: 'active',
       year: 'Sophomore',
@@ -48,7 +49,6 @@ const StudentList = () => {
       lastActive: '2024-02-15T10:30:00',
       courseProgress: {
         1: { progress: 75, grade: 85, assignments: 3, quizzes: 2 },
-        2: { progress: 60, grade: 92, assignments: 2, quizzes: 1 },
       }
     },
     {
@@ -56,7 +56,7 @@ const StudentList = () => {
       name: 'Jane Doe',
       email: 'jane.doe@student.learnsphere.com',
       avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
-      enrolledCourses: [1, 3],
+      enrolledCourses: [1], // Only enrolled in course 1 (React course)
       joinDate: '2023-09-01',
       status: 'active',
       year: 'Junior',
@@ -69,7 +69,6 @@ const StudentList = () => {
       lastActive: '2024-02-16T14:20:00',
       courseProgress: {
         1: { progress: 90, grade: 95, assignments: 3, quizzes: 2 },
-        3: { progress: 45, grade: 88, assignments: 1, quizzes: 1 },
       }
     },
     {
@@ -77,7 +76,7 @@ const StudentList = () => {
       name: 'Mike Johnson',
       email: 'mike.johnson@student.learnsphere.com',
       avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150',
-      enrolledCourses: [2],
+      enrolledCourses: [2], // Only enrolled in course 2 (JavaScript course)
       joinDate: '2023-10-15',
       status: 'active',
       year: 'Freshman',
@@ -95,25 +94,32 @@ const StudentList = () => {
   ];
 
   useEffect(() => {
-    // Filter students based on instructor's courses
-    let instructorStudents = mockStudentData;
-    
-    if (user?.role === 'instructor') {
-      // Get courses taught by this instructor
-      const instructorCourses = mockCourses.filter(course => course.instructorId === user.id);
-      const courseIds = instructorCourses.map(course => course.id);
-      
-      // Filter students enrolled in instructor's courses
-      instructorStudents = mockStudentData.filter(student =>
-        student.enrolledCourses.some(courseId => courseIds.includes(courseId))
-      );
-    }
-
-    setStudents(instructorStudents);
-    setFilteredStudents(instructorStudents);
+    loadStudentsForInstructor();
   }, [user]);
 
   useEffect(() => {
+    filterStudents();
+  }, [students, searchTerm, courseFilter, performanceFilter]);
+
+  const loadStudentsForInstructor = () => {
+    if (user?.role !== 'instructor') {
+      setStudents([]);
+      return;
+    }
+
+    // Get courses taught by this instructor
+    const instructorCourses = mockCourses.filter(course => course.instructorId === user.id);
+    const courseIds = instructorCourses.map(course => course.id);
+    
+    // Filter students enrolled ONLY in instructor's courses
+    const instructorStudents = mockStudentData.filter(student =>
+      student.enrolledCourses.some(courseId => courseIds.includes(courseId))
+    );
+
+    setStudents(instructorStudents);
+  };
+
+  const filterStudents = () => {
     let filtered = students;
 
     // Search filter
@@ -125,7 +131,7 @@ const StudentList = () => {
       );
     }
 
-    // Course filter
+    // Course filter - only show students enrolled in selected course
     if (courseFilter !== 'all') {
       filtered = filtered.filter(student =>
         student.enrolledCourses.includes(parseInt(courseFilter))
@@ -151,7 +157,7 @@ const StudentList = () => {
     }
 
     setFilteredStudents(filtered);
-  }, [students, searchTerm, courseFilter, performanceFilter]);
+  };
 
   const getPerformanceColor = (grade) => {
     if (grade >= 90) return 'text-green-600';
@@ -177,6 +183,7 @@ const StudentList = () => {
     return { label: 'Inactive', color: 'bg-red-100 text-red-800' };
   };
 
+  // Get only courses taught by this instructor
   const instructorCourses = mockCourses.filter(course => course.instructorId === user?.id);
 
   return (
@@ -186,18 +193,19 @@ const StudentList = () => {
         <div>
           <h1 className="text-2xl font-bold text-secondary-900">My Students</h1>
           <p className="text-secondary-600 mt-1">
-            Monitor student progress and engagement across your courses
+            Monitor student progress and engagement in your courses
           </p>
         </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards - Only for instructor's students */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-secondary-600">Total Students</p>
+              <p className="text-sm font-medium text-secondary-600">My Students</p>
               <p className="text-2xl font-bold text-secondary-900">{students.length}</p>
+              <p className="text-xs text-secondary-500">In your courses</p>
             </div>
             <Users className="h-8 w-8 text-blue-600" />
           </div>
@@ -213,6 +221,7 @@ const StudentList = () => {
                   : 0
                 }%
               </p>
+              <p className="text-xs text-secondary-500">Across your courses</p>
             </div>
             <Award className="h-8 w-8 text-green-600" />
           </div>
@@ -228,6 +237,7 @@ const StudentList = () => {
                   return diffHours < 72;
                 }).length}
               </p>
+              <p className="text-xs text-secondary-500">Last 3 days</p>
             </div>
             <TrendingUp className="h-8 w-8 text-purple-600" />
           </div>
@@ -240,6 +250,7 @@ const StudentList = () => {
               <p className="text-2xl font-bold text-secondary-900">
                 {students.reduce((sum, student) => sum + student.assignmentsSubmitted, 0)}
               </p>
+              <p className="text-xs text-secondary-500">Total submissions</p>
             </div>
             <CheckCircle className="h-8 w-8 text-orange-600" />
           </div>
@@ -261,7 +272,7 @@ const StudentList = () => {
             />
           </div>
 
-          {/* Course Filter */}
+          {/* Course Filter - Only instructor's courses */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
             <select
@@ -269,14 +280,14 @@ const StudentList = () => {
               onChange={(e) => setCourseFilter(e.target.value)}
               className="input-field pl-10 appearance-none"
             >
-              <option value="all">All Courses</option>
+              <option value="all">All My Courses</option>
               {instructorCourses.map(course => (
                 <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>
           </div>
 
-          {/* Performance Filter */}
+          {/* Performance Filter - FIXED: Removed < symbol */}
           <select
             value={performanceFilter}
             onChange={(e) => setPerformanceFilter(e.target.value)}
@@ -286,7 +297,7 @@ const StudentList = () => {
             <option value="excellent">Excellent (90%+)</option>
             <option value="good">Good (80-89%)</option>
             <option value="average">Average (70-79%)</option>
-            <option value="needs-improvement">Needs Improvement (&lt;70%)</option>
+            <option value="needs-improvement">Needs Improvement (Below 70%)</option>
           </select>
 
           {/* Results Count */}
@@ -344,35 +355,37 @@ const StudentList = () => {
                     </div>
                   </div>
 
-                  {/* Course Progress */}
+                  {/* Course Progress - Only show courses taught by this instructor */}
                   <div>
                     <div className="text-sm text-secondary-600 mb-2">Course Progress</div>
                     <div className="space-y-2">
-                      {student.enrolledCourses.map(courseId => {
-                        const course = mockCourses.find(c => c.id === courseId);
-                        const progress = student.courseProgress[courseId];
-                        
-                        if (!course || !progress) return null;
-                        
-                        return (
-                          <div key={courseId} className="flex items-center justify-between text-sm">
-                            <span className="text-secondary-700 truncate flex-1 mr-2">
-                              {course.title}
-                            </span>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-16 bg-secondary-200 rounded-full h-2">
-                                <div
-                                  className="bg-primary-600 h-2 rounded-full"
-                                  style={{ width: `${progress.progress}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-secondary-500 w-8">
-                                {progress.progress}%
+                      {student.enrolledCourses
+                        .filter(courseId => instructorCourses.some(c => c.id === courseId))
+                        .map(courseId => {
+                          const course = instructorCourses.find(c => c.id === courseId);
+                          const progress = student.courseProgress[courseId];
+                          
+                          if (!course || !progress) return null;
+                          
+                          return (
+                            <div key={courseId} className="flex items-center justify-between text-sm">
+                              <span className="text-secondary-700 truncate flex-1 mr-2">
+                                {course.title}
                               </span>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-16 bg-secondary-200 rounded-full h-2">
+                                  <div
+                                    className="bg-primary-600 h-2 rounded-full"
+                                    style={{ width: `${progress.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-secondary-500 w-8">
+                                  {progress.progress}%
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   </div>
 
@@ -420,7 +433,10 @@ const StudentList = () => {
           <Users className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-secondary-900 mb-2">No students found</h3>
           <p className="text-secondary-600">
-            No students match your current filter criteria.
+            {students.length === 0 
+              ? 'No students are enrolled in your courses yet.'
+              : 'No students match your current filter criteria.'
+            }
           </p>
         </div>
       )}
@@ -508,48 +524,50 @@ const StudentList = () => {
                 </div>
               </div>
 
-              {/* Course Progress Details */}
+              {/* Course Progress Details - Only instructor's courses */}
               <div className="mt-6">
-                <h5 className="font-semibold text-secondary-900 mb-4">Course Progress</h5>
+                <h5 className="font-semibold text-secondary-900 mb-4">Course Progress in Your Courses</h5>
                 <div className="space-y-4">
-                  {selectedStudent.enrolledCourses.map(courseId => {
-                    const course = mockCourses.find(c => c.id === courseId);
-                    const progress = selectedStudent.courseProgress[courseId];
-                    
-                    if (!course || !progress) return null;
-                    
-                    return (
-                      <div key={courseId} className="border border-secondary-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h6 className="font-medium text-secondary-900">{course.title}</h6>
-                          <span className={`text-lg font-bold ${getPerformanceColor(progress.grade)}`}>
-                            {progress.grade}%
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center mb-3">
-                          <div className="flex-1 bg-secondary-200 rounded-full h-2 mr-3">
-                            <div
-                              className="bg-primary-600 h-2 rounded-full"
-                              style={{ width: `${progress.progress}%` }}
-                            />
+                  {selectedStudent.enrolledCourses
+                    .filter(courseId => instructorCourses.some(c => c.id === courseId))
+                    .map(courseId => {
+                      const course = instructorCourses.find(c => c.id === courseId);
+                      const progress = selectedStudent.courseProgress[courseId];
+                      
+                      if (!course || !progress) return null;
+                      
+                      return (
+                        <div key={courseId} className="border border-secondary-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h6 className="font-medium text-secondary-900">{course.title}</h6>
+                            <span className={`text-lg font-bold ${getPerformanceColor(progress.grade)}`}>
+                              {progress.grade}%
+                            </span>
                           </div>
-                          <span className="text-sm text-secondary-600">{progress.progress}% complete</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-secondary-600">Assignments: </span>
-                            <span className="font-medium">{progress.assignments} completed</span>
+                          
+                          <div className="flex items-center mb-3">
+                            <div className="flex-1 bg-secondary-200 rounded-full h-2 mr-3">
+                              <div
+                                className="bg-primary-600 h-2 rounded-full"
+                                style={{ width: `${progress.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-secondary-600">{progress.progress}% complete</span>
                           </div>
-                          <div>
-                            <span className="text-secondary-600">Quizzes: </span>
-                            <span className="font-medium">{progress.quizzes} taken</span>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-secondary-600">Assignments: </span>
+                              <span className="font-medium">{progress.assignments} completed</span>
+                            </div>
+                            <div>
+                              <span className="text-secondary-600">Quizzes: </span>
+                              <span className="font-medium">{progress.quizzes} taken</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>

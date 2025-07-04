@@ -15,8 +15,12 @@ import {
   MessageSquare,
   Award,
   BookOpen,
+  Edit,
+  StickyNote,
 } from 'lucide-react';
 import { mockCourses } from '../../utils/mockData';
+import CourseRating from './CourseRating';
+import CourseNotes from './CourseNotes';
 import toast from 'react-hot-toast';
 
 const CourseDetail = () => {
@@ -26,14 +30,78 @@ const CourseDetail = () => {
   const [course, setCourse] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [courseRating, setCourseRating] = useState({ average: 0, count: 0, ratings: [] });
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
 
   useEffect(() => {
-    const foundCourse = mockCourses.find(c => c.id === parseInt(id));
+    loadCourseData();
+    loadCourseRating();
+    loadEnrolledStudents();
+  }, [id, user]);
+
+  const loadCourseData = () => {
+    // Check localStorage first, then mock data
+    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    let foundCourse = storedCourses.find(c => c.id === parseInt(id));
+    
+    if (!foundCourse) {
+      foundCourse = mockCourses.find(c => c.id === parseInt(id));
+    }
+    
     if (foundCourse) {
       setCourse(foundCourse);
       setIsEnrolled(user?.enrolledCourses?.includes(foundCourse.id) || false);
     }
-  }, [id, user]);
+  };
+
+  const loadCourseRating = () => {
+    const ratings = JSON.parse(localStorage.getItem('courseRatings') || '{}');
+    const courseRatings = Object.values(ratings).filter(rating => rating.courseId === parseInt(id));
+    
+    if (courseRatings.length > 0) {
+      const average = courseRatings.reduce((sum, rating) => sum + rating.rating, 0) / courseRatings.length;
+      setCourseRating({
+        average: Math.round(average * 10) / 10,
+        count: courseRatings.length,
+        ratings: courseRatings
+      });
+    }
+  };
+
+  const loadEnrolledStudents = () => {
+    // Mock enrolled students data
+    const mockEnrolledStudents = [
+      {
+        id: 5,
+        name: 'John Smith',
+        email: 'john.smith@student.learnsphere.com',
+        avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150',
+        enrolledAt: '2024-02-01',
+        progress: 75,
+        lastActive: '2024-02-15',
+      },
+      {
+        id: 6,
+        name: 'Jane Doe',
+        email: 'jane.doe@student.learnsphere.com',
+        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
+        enrolledAt: '2024-02-01',
+        progress: 90,
+        lastActive: '2024-02-16',
+      },
+      {
+        id: 7,
+        name: 'Mike Johnson',
+        email: 'mike.johnson@student.learnsphere.com',
+        avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150',
+        enrolledAt: '2024-02-05',
+        progress: 45,
+        lastActive: '2024-02-14',
+      },
+    ];
+    
+    setEnrolledStudents(mockEnrolledStudents);
+  };
 
   const handleEnroll = () => {
     if (!user) {
@@ -51,11 +119,23 @@ const CourseDetail = () => {
     toast.success('Successfully enrolled in course!');
   };
 
+  const handleRatingUpdate = () => {
+    loadCourseRating();
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BookOpen },
     { id: 'modules', label: 'Modules', icon: Play },
     { id: 'assignments', label: 'Assignments', icon: FileText },
     { id: 'discussions', label: 'Discussions', icon: MessageSquare },
+    { id: 'notes', label: 'Notes', icon: StickyNote },
+    ...(user?.role === 'instructor' && course?.instructorId === user?.id ? [
+      { id: 'students', label: 'Students', icon: Users },
+      { id: 'ratings', label: 'Ratings', icon: Star }
+    ] : []),
+    ...(user?.role === 'student' && isEnrolled ? [
+      { id: 'rating', label: 'Rate Course', icon: Star }
+    ] : []),
   ];
 
   if (!course) {
@@ -72,13 +152,25 @@ const CourseDetail = () => {
   return (
     <div className="space-y-6">
       {/* Back Button */}
-      <Link
-        to="/courses"
-        className="inline-flex items-center text-secondary-600 hover:text-secondary-900 transition-colors duration-200"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Courses
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/courses"
+          className="inline-flex items-center text-secondary-600 hover:text-secondary-900 transition-colors duration-200"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Courses
+        </Link>
+        
+        {user?.role === 'instructor' && course?.instructorId === user?.id && (
+          <Link
+            to={`/courses/${course.id}/edit`}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Edit className="h-4 w-4" />
+            <span>Edit Course</span>
+          </Link>
+        )}
+      </div>
 
       {/* Course Header */}
       <div className="bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden">
@@ -115,7 +207,7 @@ const CourseDetail = () => {
               </div>
               <div className="flex items-center">
                 <Star className="h-4 w-4 mr-1 text-yellow-400" />
-                <span>4.8 (124 reviews)</span>
+                <span>{courseRating.average} ({courseRating.count} reviews)</span>
               </div>
             </div>
           </div>
@@ -169,14 +261,14 @@ const CourseDetail = () => {
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-secondary-200">
         <div className="border-b border-secondary-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-8 px-6 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-secondary-600 hover:text-secondary-900'
@@ -352,6 +444,133 @@ const CourseDetail = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Notes Tab */}
+          {activeTab === 'notes' && (
+            <CourseNotes courseId={course.id} />
+          )}
+
+          {/* Students Tab (Instructor Only) */}
+          {activeTab === 'students' && user?.role === 'instructor' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-secondary-900">Enrolled Students</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {enrolledStudents.map((student) => (
+                  <div key={student.id} className="border border-secondary-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <img
+                        src={student.avatar}
+                        alt={student.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div>
+                        <h4 className="font-medium text-secondary-900">{student.name}</h4>
+                        <p className="text-sm text-secondary-600">{student.email}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-secondary-600">Progress:</span>
+                        <span className="font-medium">{student.progress}%</span>
+                      </div>
+                      <div className="w-full bg-secondary-200 rounded-full h-2">
+                        <div
+                          className="bg-primary-600 h-2 rounded-full"
+                          style={{ width: `${student.progress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-secondary-600">Enrolled:</span>
+                        <span>{new Date(student.enrolledAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-secondary-600">Last Active:</span>
+                        <span>{new Date(student.lastActive).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ratings Tab (Instructor Only) */}
+          {activeTab === 'ratings' && user?.role === 'instructor' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-secondary-900">Course Ratings</h3>
+                <div className="flex items-center space-x-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  <span className="text-lg font-bold">{courseRating.average}</span>
+                  <span className="text-secondary-600">({courseRating.count} reviews)</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {courseRating.ratings.map((rating, index) => (
+                  <div key={index} className="border border-secondary-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-secondary-900">{rating.userName}</h4>
+                      <div className="flex items-center space-x-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < rating.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {rating.review && (
+                      <p className="text-secondary-700">{rating.review}</p>
+                    )}
+                    <p className="text-xs text-secondary-500 mt-2">
+                      {new Date(rating.submittedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {courseRating.ratings.length === 0 && (
+                <div className="text-center py-8 text-secondary-600">
+                  <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No ratings yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Rating Tab (Student Only) - FIXED: Now shows for enrolled students */}
+          {activeTab === 'rating' && user?.role === 'student' && isEnrolled && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-2">Rate This Course</h3>
+                <p className="text-secondary-600">
+                  Share your experience with this course to help other students
+                </p>
+              </div>
+              <CourseRating courseId={course.id} onRatingUpdate={handleRatingUpdate} />
+            </div>
+          )}
+
+          {/* Show message if student is not enrolled and tries to access rating */}
+          {activeTab === 'rating' && user?.role === 'student' && !isEnrolled && (
+            <div className="text-center py-8 text-secondary-600">
+              <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium text-secondary-900 mb-2">Enroll to Rate</h3>
+              <p className="text-secondary-600 mb-4">
+                You need to be enrolled in this course to rate it
+              </p>
+              <button
+                onClick={handleEnroll}
+                className="btn-primary"
+                disabled={course.enrolledStudents >= course.maxStudents}
+              >
+                {course.enrolledStudents >= course.maxStudents ? 'Course Full' : 'Enroll Now'}
+              </button>
             </div>
           )}
         </div>

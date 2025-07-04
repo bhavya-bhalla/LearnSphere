@@ -13,6 +13,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
+import { eventBus, EVENTS } from '../../utils/eventBus';
 import toast from 'react-hot-toast';
 
 const CreateQuiz = () => {
@@ -112,7 +113,28 @@ const CreateQuiz = () => {
       return;
     }
 
-    // Mock save operation
+    // Create new quiz object
+    const newQuiz = {
+      id: Date.now(),
+      ...quizData,
+      questions: questions.filter(q => q.question.trim() !== ''),
+      instructorId: user?.id,
+      instructor: user?.name,
+      courseName: instructorCourses.find(c => c.id === parseInt(quizData.courseId))?.title,
+      createdAt: new Date().toISOString(),
+      totalSubmissions: 0,
+      averageScore: 0,
+      status: 'active',
+    };
+
+    // Save to localStorage
+    const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+    existingQuizzes.push(newQuiz);
+    localStorage.setItem('quizzes', JSON.stringify(existingQuizzes));
+
+    // Emit event for real-time updates
+    eventBus.emit(EVENTS.QUIZ_CREATED, newQuiz);
+
     toast.success('Quiz created successfully!');
     navigate('/quizzes');
   };
