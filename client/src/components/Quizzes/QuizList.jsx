@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2,
 } from 'lucide-react';
+import { eventBus, EVENTS } from '../../utils/eventBus';
 import toast from 'react-hot-toast';
 
 const QuizList = () => {
@@ -97,6 +98,25 @@ const QuizList = () => {
   ];
 
   useEffect(() => {
+    loadQuizzes();
+
+    // Listen for real-time updates
+    const handleQuizCreated = () => {
+      loadQuizzes(); // Reload quizzes when new quiz is created
+    };
+
+    eventBus.on(EVENTS.QUIZ_CREATED, handleQuizCreated);
+
+    return () => {
+      eventBus.off(EVENTS.QUIZ_CREATED, handleQuizCreated);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    filterQuizzes();
+  }, [quizzes, searchTerm, statusFilter, courseFilter]);
+
+  const loadQuizzes = () => {
     // Load quizzes from localStorage and merge with mock data
     const storedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
     let allQuizzes = [...mockQuizzes, ...storedQuizzes];
@@ -113,10 +133,9 @@ const QuizList = () => {
     }
 
     setQuizzes(userQuizzes);
-    setFilteredQuizzes(userQuizzes);
-  }, [user]);
+  };
 
-  useEffect(() => {
+  const filterQuizzes = () => {
     let filtered = quizzes;
 
     // Search filter
@@ -139,7 +158,7 @@ const QuizList = () => {
     }
 
     setFilteredQuizzes(filtered);
-  }, [quizzes, searchTerm, statusFilter, courseFilter]);
+  };
 
   const getStatusInfo = (quiz) => {
     const now = new Date();
@@ -199,7 +218,12 @@ const QuizList = () => {
       const updatedQuizzes = storedQuizzes.filter(quiz => quiz.id !== quizId);
       localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
       
+      // Update state immediately
       setQuizzes(prev => prev.filter(quiz => quiz.id !== quizId));
+      
+      // Emit event for real-time updates
+      eventBus.emit(EVENTS.QUIZ_DELETED, { quizId });
+      
       toast.success('Quiz deleted successfully');
     }
   };
