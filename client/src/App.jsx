@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import CourseList from './components/Courses/CourseList';
 import CourseDetail from './components/Courses/CourseDetail';
 import CreateCourse from './components/Courses/CreateCourse';
+import EditCourse from './components/Courses/EditCourse';
 import AssignmentList from './components/Assignments/AssignmentList';
 import CreateAssignment from './components/Assignments/CreateAssignment';
 import AssignmentSubmissions from './components/Assignments/AssignmentSubmissions';
@@ -22,6 +23,7 @@ import NotificationCenter from './components/Notifications/NotificationCenter';
 import StudentList from './components/Students/StudentList';
 import Analytics from './components/Analytics/Analytics.jsx';
 import GradesList from './components/Grades/GradesList';
+import AdminDashboard from './components/Admin/AdminDashboard';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 function App() {
@@ -56,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CourseDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditCourse />
                 </ProtectedRoute>
               }
             />
@@ -160,6 +170,24 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GradesList />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />
