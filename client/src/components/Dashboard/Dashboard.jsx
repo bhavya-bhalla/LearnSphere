@@ -316,17 +316,21 @@ const Dashboard = () => {
                 <div className="flex-1">
                   <h3 className="font-medium text-secondary-900">{course.title}</h3>
                   <p className="text-sm text-secondary-600">{course.instructor}</p>
-                  <div className="flex items-center mt-1">
-                    <div className="w-32 bg-secondary-200 rounded-full h-2">
-                      <div
-                        className="bg-primary-600 h-2 rounded-full"
-                        style={{ width: `${course.progress || 0}%` }}
-                      />
+                  
+                  {/* Only show progress for students */}
+                  {user?.role === 'student' && (
+                    <div className="flex items-center mt-1">
+                      <div className="w-32 bg-secondary-200 rounded-full h-2">
+                        <div
+                          className="bg-primary-600 h-2 rounded-full"
+                          style={{ width: `${course.progress || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-secondary-500 ml-2">
+                        {course.progress || 0}%
+                      </span>
                     </div>
-                    <span className="text-xs text-secondary-500 ml-2">
-                      {course.progress || 0}%
-                    </span>
-                  </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-secondary-900">{course.level}</p>
