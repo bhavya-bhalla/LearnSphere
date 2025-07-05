@@ -47,14 +47,24 @@ const CourseList = () => {
 
     const handleCourseApproved = (approvedCourse) => {
       loadCourses(); // Reload courses to show approved course
+      toast.success(`Course "${approvedCourse.title}" has been approved and is now available!`);
+    };
+
+    const handleEnrollmentApproved = (enrollment) => {
+      if (user?.role === 'student' && enrollment.studentId === user.id) {
+        loadCourses(); // Reload to show newly accessible course
+        toast.success(`You have been enrolled in "${enrollment.courseName}"!`);
+      }
     };
 
     eventBus.on(EVENTS.COURSE_CREATED, handleCourseCreated);
     eventBus.on(EVENTS.COURSE_APPROVED, handleCourseApproved);
+    eventBus.on(EVENTS.ENROLLMENT_APPROVED, handleEnrollmentApproved);
 
     return () => {
       eventBus.off(EVENTS.COURSE_CREATED, handleCourseCreated);
       eventBus.off(EVENTS.COURSE_APPROVED, handleCourseApproved);
+      eventBus.off(EVENTS.ENROLLMENT_APPROVED, handleEnrollmentApproved);
     };
   }, [user]);
 
@@ -84,6 +94,26 @@ const CourseList = () => {
     } else if (user?.role === 'student') {
       // Students see all active courses, with enrollment status
       userCourses = allCourses.filter(course => course.status === 'active');
+      
+      // Check approved enrollments to update user's enrolled courses
+      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      
+      // Update user's enrolled courses based on approved enrollments
+      if (userApprovedEnrollments.length > 0) {
+        const enrolledCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+        // In a real app, this would update the user object in the backend
+        // For now, we'll just use it to determine enrollment status
+        userCourses = userCourses.map(course => ({
+          ...course,
+          isUserEnrolled: enrolledCourseIds.includes(course.id) || (user.enrolledCourses || []).includes(course.id)
+        }));
+      } else {
+        userCourses = userCourses.map(course => ({
+          ...course,
+          isUserEnrolled: (user.enrolledCourses || []).includes(course.id)
+        }));
+      }
     }
     
     setCourses(userCourses);
@@ -151,8 +181,9 @@ const CourseList = () => {
     }
   };
 
-  const isEnrolled = (courseId) => {
-    return user?.enrolledCourses?.includes(courseId);
+  const isEnrolled = (course) => {
+    // Check if user is enrolled (either from user data or approved enrollments)
+    return course.isUserEnrolled || (user?.enrolledCourses?.includes(course.id));
   };
 
   const hasPendingEnrollment = (courseId) => {
@@ -197,7 +228,7 @@ const CourseList = () => {
     if (!course) return;
 
     // Check if already enrolled or has pending request
-    if (isEnrolled(courseId)) {
+    if (isEnrolled(course)) {
       toast.info('You are already enrolled in this course');
       return;
     }
@@ -374,6 +405,7 @@ const CourseList = () => {
         {filteredCourses.map((course) => {
           const rating = getCourseRating(course.id);
           const isPendingEnrollment = hasPendingEnrollment(course.id);
+          const userEnrolled = isEnrolled(course);
           
           return (
             <div key={course.id} className="bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden card-hover">
@@ -388,7 +420,7 @@ const CourseList = () => {
                     {course.level}
                   </span>
                 </div>
-                {user?.role === 'student' && isEnrolled(course.id) && (
+                {user?.role === 'student' && userEnrolled && (
                   <div className="absolute top-4 right-4">
                     <span className="bg-primary-600 text-white px-2 py-1 rounded-full text-xs font-medium">
                       Enrolled
@@ -465,7 +497,7 @@ const CourseList = () => {
                 </div>
 
                 {/* Progress Bar for enrolled students */}
-                {user?.role === 'student' && isEnrolled(course.id) && course.progress !== undefined && (
+                {user?.role === 'student' && userEnrolled && course.progress !== undefined && (
                   <div className="mb-4">
                     <div className="flex justify-between text-sm text-secondary-600 mb-1">
                       <span>Progress</span>
@@ -513,7 +545,7 @@ const CourseList = () => {
                       </>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        {!isEnrolled(course.id) && !isPendingEnrollment && course.status === 'active' && (
+                        {!userEnrolled && !isPendingEnrollment && course.status === 'active' && (
                           <button
                             onClick={() => handleEnrollCourse(course.id)}
                             className="btn-primary text-sm px-3 py-1"
