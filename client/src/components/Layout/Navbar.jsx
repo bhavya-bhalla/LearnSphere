@@ -4,7 +4,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 import {
   Bell,
-  Search,
   User,
   LogOut,
   Settings,
@@ -93,18 +92,6 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
           <div className="nav-actions">
             {isAuthenticated ? (
               <>
-                {/* Search */}
-                <div className="search-container">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder="Search courses..."
-                      className="input-field pl-10 text-sm"
-                    />
-                  </div>
-                </div>
-
                 {/* Notifications */}
                 <Link
                   to="/notifications"
