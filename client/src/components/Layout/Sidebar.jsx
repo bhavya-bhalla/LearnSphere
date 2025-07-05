@@ -18,6 +18,7 @@ import {
   Award,
   TrendingUp,
   UserCheck,
+  StickyNote,
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -33,6 +34,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { name: 'My Grades', path: '/grades', icon: Award },
         { name: 'Quizzes', path: '/quizzes', icon: FileQuestion },
         { name: 'Discussions', path: '/discussions', icon: MessageSquare },
+        { name: 'Course Notes', path: '/discussions/notes', icon: StickyNote },
         { name: 'Notifications', path: '/notifications', icon: Bell },
       ];
     }
@@ -45,6 +47,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { name: 'Assignments', path: '/assignments', icon: FileText },
         { name: 'Quizzes', path: '/quizzes', icon: FileQuestion },
         { name: 'Discussions', path: '/discussions', icon: MessageSquare },
+        { name: 'Course Notes', path: '/discussions/notes', icon: StickyNote },
         { name: 'Students', path: '/students', icon: UserCheck },
         { name: 'Analytics', path: '/analytics', icon: BarChart3 },
         { name: 'Notifications', path: '/notifications', icon: Bell },
