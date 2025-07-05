@@ -33,7 +33,6 @@ const CreateAssignment = () => {
     instructions: '',
     rubric: '',
     allowLateSubmissions: true,
-    latePenalty: 10, // percentage per day
     groupAssignment: false,
     maxGroupSize: 4,
   });
@@ -352,23 +351,6 @@ const CreateAssignment = () => {
               Allow Late Submissions
             </label>
 
-            {assignmentData.allowLateSubmissions && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-secondary-700">Penalty:</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={assignmentData.latePenalty}
-                  onChange={(e) => handleInputChange('latePenalty', parseInt(e.target.value))}
-                  className="input-field w-20"
-                />
-                <span className="text-sm text-secondary-700">% per day</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-4">
             <label className="flex items-center">
               <input
                 type="checkbox"
@@ -528,8 +510,7 @@ const CreateAssignment = () => {
             <div>
               <h3 className="text-sm font-medium text-yellow-800">Late Submission Policy</h3>
               <p className="text-sm text-yellow-700 mt-1">
-                Students will be penalized {assignmentData.latePenalty}% per day for late submissions.
-                Make sure to communicate this policy clearly to your students.
+                Late submissions are allowed for this assignment. Make sure to communicate your late submission policy clearly to your students.
               </p>
             </div>
           </div>
