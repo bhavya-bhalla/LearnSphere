@@ -10,8 +10,12 @@ const CourseRating = ({ courseId, onRatingUpdate }) => {
   const [hoveredRating, setHoveredRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
   const [existingRating, setExistingRating] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
+    // Check if user is enrolled in this course
+    checkEnrollment();
+    
     // Check if user has already rated this course
     const ratings = JSON.parse(localStorage.getItem('courseRatings') || '{}');
     const userRating = ratings[`${user?.id}-${courseId}`];
@@ -24,7 +28,24 @@ const CourseRating = ({ courseId, onRatingUpdate }) => {
     }
   }, [courseId, user?.id]);
 
+  const checkEnrollment = () => {
+    // Check if user is enrolled (from user data or approved enrollments)
+    const userEnrolledCourses = user?.enrolledCourses || [];
+    const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+    const userApprovedEnrollments = approvedEnrollments.filter(enrollment => 
+      enrollment.studentId === user?.id && enrollment.courseId === courseId
+    );
+    
+    const enrolled = userEnrolledCourses.includes(courseId) || userApprovedEnrollments.length > 0;
+    setIsEnrolled(enrolled);
+  };
+
   const handleRatingSubmit = () => {
+    if (!isEnrolled) {
+      toast.error('You must be enrolled in this course to rate it');
+      return;
+    }
+
     if (rating === 0) {
       toast.error('Please select a rating');
       return;
@@ -61,12 +82,12 @@ const CourseRating = ({ courseId, onRatingUpdate }) => {
         <button
           key={index}
           type="button"
-          onClick={() => !hasRated && setRating(starValue)}
-          onMouseEnter={() => !hasRated && setHoveredRating(starValue)}
-          onMouseLeave={() => !hasRated && setHoveredRating(0)}
-          disabled={hasRated}
+          onClick={() => !hasRated && isEnrolled && setRating(starValue)}
+          onMouseEnter={() => !hasRated && isEnrolled && setHoveredRating(starValue)}
+          onMouseLeave={() => !hasRated && isEnrolled && setHoveredRating(0)}
+          disabled={hasRated || !isEnrolled}
           className={`text-2xl transition-colors duration-200 ${
-            hasRated ? 'cursor-default' : 'cursor-pointer hover:scale-110'
+            hasRated || !isEnrolled ? 'cursor-default' : 'cursor-pointer hover:scale-110'
           } ${
             starValue <= (hoveredRating || rating)
               ? 'text-yellow-400'
@@ -80,6 +101,20 @@ const CourseRating = ({ courseId, onRatingUpdate }) => {
       );
     });
   };
+
+  if (!isEnrolled) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+        <div className="text-center py-8 text-secondary-600">
+          <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-medium text-secondary-900 mb-2">Enroll to Rate</h3>
+          <p className="text-secondary-600">
+            You need to be enrolled in this course to rate it
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
