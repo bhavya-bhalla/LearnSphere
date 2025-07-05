@@ -14,6 +14,7 @@ import {
   Plus,
   BarChart3,
   GraduationCap,
+  View,
 } from 'lucide-react';
 import { mockCourses, mockAnnouncements } from '../../utils/mockData';
 import Calendar from 'react-calendar';
@@ -261,12 +262,15 @@ const Dashboard = () => {
           {user?.role === 'admin' && "Here's your system overview for today."}
         </p>
         {user?.role === 'student' && (
-          <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">Your Calendar</h2>
-            <div className="max-w-sm mx-auto bg-white rounded-lg shadow-sm p-4">
+          <div className="mt-10 flex justify-center">
+            <div className=" bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4"> Your Calendar </h2>
               <Calendar
                 onChange={() => {}}
                 value={new Date()}
+                className="w-full border-none text-gray-700"
+                titleClassName={({ date, view }) =>
+                  'hover:bg-blue-100 rounded-xl p-1'}
               />
             </div>
           </div>
