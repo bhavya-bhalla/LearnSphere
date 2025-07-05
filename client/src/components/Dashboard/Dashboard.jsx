@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import {
   BookOpen,
   Users,
-  Calendar,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -17,6 +16,8 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { mockCourses, mockAnnouncements } from '../../utils/mockData';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css'; 
 
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
@@ -259,6 +260,17 @@ const Dashboard = () => {
           {user?.role === 'instructor' && "Your students are waiting for your guidance."}
           {user?.role === 'admin' && "Here's your system overview for today."}
         </p>
+        {user?.role === 'student' && (
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold mb-2">Your Calendar</h2>
+            <div className="max-w-sm mx-auto bg-white rounded-lg shadow-sm p-4">
+              <Calendar
+                onChange={() => {}}
+                value={new Date()}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
