@@ -15,6 +15,8 @@ import AssignmentList from './components/Assignments/AssignmentList';
 import CreateAssignment from './components/Assignments/CreateAssignment';
 import AssignmentSubmissions from './components/Assignments/AssignmentSubmissions';
 import DiscussionList from './components/Discussions/DiscussionList';
+import CreateDiscussion from './components/Discussions/CreateDiscussion';
+import DiscussionNotes from './components/Discussions/DiscussionNotes';
 import QuizList from './components/Quizzes/QuizList';
 import CreateQuiz from './components/Quizzes/CreateQuiz';
 import TakeQuiz from './components/Quizzes/TakeQuiz';
@@ -25,7 +27,6 @@ import Analytics from './components/Analytics/Analytics.jsx';
 import GradesList from './components/Grades/GradesList';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
-import Unauthorized from './components/Auth/Unauthorized'; // new import
 
 function App() {
   return (
@@ -36,9 +37,8 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-
-            {/* Protected Routes (Role: any authenticated user) */}
+            
+            {/* Protected Routes */}
             <Route
               path="/dashboard"
               element={
@@ -63,8 +63,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* Instructor-only Routes */}
             <Route
               path="/courses/:id/edit"
               element={
@@ -76,34 +74,24 @@ function App() {
             <Route
               path="/create-course"
               element={
-                <ProtectedRoute allowedRoles={['instructor']}>
+                <ProtectedRoute>
                   <CreateCourse />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assignments"
+              element={
+                <ProtectedRoute>
+                  <AssignmentList />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/assignments/create"
               element={
-                <ProtectedRoute allowedRoles={['instructor']}>
-                  <CreateAssignment />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/quizzes/create"
-              element={
-                <ProtectedRoute allowedRoles={['instructor']}>
-                  <CreateQuiz />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Other Protected Routes */}
-            <Route
-              path="/assignments"
-              element={
                 <ProtectedRoute>
-                  <AssignmentList />
+                  <CreateAssignment />
                 </ProtectedRoute>
               }
             />
@@ -124,10 +112,34 @@ function App() {
               }
             />
             <Route
+              path="/discussions/create"
+              element={
+                <ProtectedRoute>
+                  <CreateDiscussion />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/discussions/notes"
+              element={
+                <ProtectedRoute>
+                  <DiscussionNotes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/quizzes"
               element={
                 <ProtectedRoute>
                   <QuizList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quizzes/create"
+              element={
+                <ProtectedRoute>
+                  <CreateQuiz />
                 </ProtectedRoute>
               }
             />
@@ -179,8 +191,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* Redirects */}
             
             {/* Admin Routes */}
             <Route
@@ -202,11 +212,11 @@ function App() {
             
             {/* Redirect root to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Catch all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Layout>
-
-        {/* Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{
