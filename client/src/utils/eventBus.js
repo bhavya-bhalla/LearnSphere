@@ -35,6 +35,9 @@ export const EVENTS = {
   QUIZ_DELETED: 'quiz_deleted',
   DISCUSSION_CREATED: 'discussion_created',
   DISCUSSION_UPDATED: 'discussion_updated',
+  NOTE_CREATED: 'note_created',
+  NOTE_UPDATED: 'note_updated',
+  NOTE_DELETED: 'note_deleted',
   ENROLLMENT_REQUESTED: 'enrollment_requested',
   ENROLLMENT_APPROVED: 'enrollment_approved',
 };
