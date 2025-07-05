@@ -32,6 +32,7 @@ const CourseList = () => {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [courseRatings, setCourseRatings] = useState({});
   const [pendingEnrollments, setPendingEnrollments] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -68,92 +69,133 @@ const CourseList = () => {
     };
   }, [user]);
 
+  // FIXED: Enhanced useEffect with proper dependencies and debouncing
   useEffect(() => {
-    filterCourses();
+    // Add debouncing for search to improve performance
+    const timeoutId = setTimeout(() => {
+      filterCourses();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, [courses, searchTerm, selectedCategory, selectedLevel]);
 
   const loadCourses = () => {
-    // Load courses from localStorage (for newly created courses) and merge with mock data
-    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    const pendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
+    setIsLoading(true);
     
-    let allCourses = [...mockCourses, ...storedCourses];
-    
-    // For instructors, also show their pending courses
-    if (user?.role === 'instructor') {
-      const instructorPendingCourses = pendingCourses.filter(course => course.instructorId === user.id);
-      allCourses = [...allCourses, ...instructorPendingCourses];
-    }
-    
-    // Filter courses based on user role
-    let userCourses = allCourses;
-    
-    if (user?.role === 'instructor') {
-      // Instructors only see courses they created/own
-      userCourses = allCourses.filter(course => course.instructorId === user.id);
-    } else if (user?.role === 'student') {
-      // Students see all active courses, with enrollment status
-      userCourses = allCourses.filter(course => course.status === 'active');
+    try {
+      // Load courses from localStorage (for newly created courses) and merge with mock data
+      const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+      const pendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
       
-      // Check approved enrollments to update user's enrolled courses
-      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
-      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      let allCourses = [...mockCourses, ...storedCourses];
       
-      // Update user's enrolled courses based on approved enrollments
-      if (userApprovedEnrollments.length > 0) {
-        const enrolledCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
-        // In a real app, this would update the user object in the backend
-        // For now, we'll just use it to determine enrollment status
-        userCourses = userCourses.map(course => ({
-          ...course,
-          isUserEnrolled: enrolledCourseIds.includes(course.id) || (user.enrolledCourses || []).includes(course.id)
-        }));
-      } else {
-        userCourses = userCourses.map(course => ({
-          ...course,
-          isUserEnrolled: (user.enrolledCourses || []).includes(course.id)
-        }));
+      // For instructors, also show their pending courses
+      if (user?.role === 'instructor') {
+        const instructorPendingCourses = pendingCourses.filter(course => course.instructorId === user.id);
+        allCourses = [...allCourses, ...instructorPendingCourses];
       }
+      
+      // Filter courses based on user role
+      let userCourses = allCourses;
+      
+      if (user?.role === 'instructor') {
+        // Instructors only see courses they created/own
+        userCourses = allCourses.filter(course => course.instructorId === user.id);
+      } else if (user?.role === 'student') {
+        // Students see all active courses, with enrollment status
+        userCourses = allCourses.filter(course => course.status === 'active');
+        
+        // Check approved enrollments to update user's enrolled courses
+        const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+        const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+        
+        // Update user's enrolled courses based on approved enrollments
+        if (userApprovedEnrollments.length > 0) {
+          const enrolledCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+          userCourses = userCourses.map(course => ({
+            ...course,
+            isUserEnrolled: enrolledCourseIds.includes(course.id) || (user.enrolledCourses || []).includes(course.id)
+          }));
+        } else {
+          userCourses = userCourses.map(course => ({
+            ...course,
+            isUserEnrolled: (user.enrolledCourses || []).includes(course.id)
+          }));
+        }
+      }
+      
+      console.log('Loaded courses:', userCourses); // Debug log
+      setCourses(userCourses);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setCourses(userCourses);
   };
 
   const loadCourseRatings = () => {
-    const ratings = JSON.parse(localStorage.getItem('courseRatings') || '{}');
-    const ratingsMap = {};
-    
-    Object.values(ratings).forEach(rating => {
-      if (!ratingsMap[rating.courseId]) {
-        ratingsMap[rating.courseId] = { total: 0, count: 0 };
-      }
-      ratingsMap[rating.courseId].total += rating.rating;
-      ratingsMap[rating.courseId].count += 1;
-    });
-    
-    // Calculate averages
-    Object.keys(ratingsMap).forEach(courseId => {
-      ratingsMap[courseId].average = ratingsMap[courseId].total / ratingsMap[courseId].count;
-    });
-    
-    setCourseRatings(ratingsMap);
+    try {
+      const ratings = JSON.parse(localStorage.getItem('courseRatings') || '{}');
+      const ratingsMap = {};
+      
+      Object.values(ratings).forEach(rating => {
+        if (!ratingsMap[rating.courseId]) {
+          ratingsMap[rating.courseId] = { total: 0, count: 0 };
+        }
+        ratingsMap[rating.courseId].total += rating.rating;
+        ratingsMap[rating.courseId].count += 1;
+      });
+      
+      // Calculate averages
+      Object.keys(ratingsMap).forEach(courseId => {
+        ratingsMap[courseId].average = ratingsMap[courseId].total / ratingsMap[courseId].count;
+      });
+      
+      setCourseRatings(ratingsMap);
+    } catch (error) {
+      console.error('Error loading course ratings:', error);
+    }
   };
 
   const loadPendingEnrollments = () => {
-    const pending = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
-    setPendingEnrollments(pending);
+    try {
+      const pending = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
+      setPendingEnrollments(pending);
+    } catch (error) {
+      console.error('Error loading pending enrollments:', error);
+    }
   };
 
+  // FIXED: Enhanced filterCourses function with better search logic and null checks
   const filterCourses = () => {
-    let filtered = courses;
+    console.log('Filtering courses...', { searchTerm, selectedCategory, selectedLevel, totalCourses: courses.length }); // Debug log
+    
+    if (!Array.isArray(courses) || courses.length === 0) {
+      console.log('No courses to filter');
+      setFilteredCourses([]);
+      return;
+    }
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(course =>
-        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    let filtered = [...courses]; // Create a copy to avoid mutation
+
+    // Search filter - Enhanced with more comprehensive search and null checks
+    if (searchTerm && searchTerm.trim() !== '') {
+      const searchLower = searchTerm.toLowerCase().trim();
+      console.log('Searching for:', searchLower); // Debug log
+      
+      filtered = filtered.filter(course => {
+        // Add null checks for all fields
+        const titleMatch = course.title ? course.title.toLowerCase().includes(searchLower) : false;
+        const descMatch = course.description ? course.description.toLowerCase().includes(searchLower) : false;
+        const instructorMatch = course.instructor ? course.instructor.toLowerCase().includes(searchLower) : false;
+        const categoryMatch = course.category ? course.category.toLowerCase().includes(searchLower) : false;
+        
+        const match = titleMatch || descMatch || instructorMatch || categoryMatch;
+        console.log(`Course ${course.id}: ${match ? 'MATCH' : 'NO MATCH'}`, { titleMatch, descMatch, instructorMatch, categoryMatch });
+        
+        return match;
+      });
     }
 
     // Category filter
@@ -166,11 +208,28 @@ const CourseList = () => {
       filtered = filtered.filter(course => course.level === selectedLevel);
     }
 
+    console.log('Filtered courses:', filtered.length); // Debug log
     setFilteredCourses(filtered);
   };
 
-  const categories = [...new Set(courses.map(course => course.category))];
-  const levels = [...new Set(courses.map(course => course.level))];
+  // FIXED: Enhanced search input handler with immediate feedback
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    console.log('Search input changed:', value); // Debug log
+    setSearchTerm(value);
+  };
+
+  // FIXED: Clear search function
+  const handleClearSearch = () => {
+    console.log('Clearing search'); // Debug log
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setSelectedLevel('all');
+  };
+
+  // Get unique categories and levels from courses with null checks
+  const categories = courses.length > 0 ? [...new Set(courses.map(course => course.category).filter(Boolean))] : [];
+  const levels = courses.length > 0 ? [...new Set(courses.map(course => course.level).filter(Boolean))] : [];
 
   const getLevelColor = (level) => {
     switch (level) {
@@ -182,7 +241,6 @@ const CourseList = () => {
   };
 
   const isEnrolled = (course) => {
-    // Check if user is enrolled (either from user data or approved enrollments)
     return course.isUserEnrolled || (user?.enrolledCourses?.includes(course.id));
   };
 
@@ -222,7 +280,6 @@ const CourseList = () => {
     }
   };
 
-  // UPDATED: Request enrollment (requires admin approval)
   const handleEnrollCourse = (courseId) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
@@ -264,6 +321,15 @@ const CourseList = () => {
     toast.success('Enrollment request submitted! Waiting for admin approval.');
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -291,7 +357,7 @@ const CourseList = () => {
         )}
       </div>
 
-      {/* Statistics for Instructors - Only show stats for their own courses */}
+      {/* Statistics for Instructors */}
       {user?.role === 'instructor' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
@@ -351,19 +417,29 @@ const CourseList = () => {
         </div>
       )}
 
-      {/* Filters */}
+      {/* FIXED: Enhanced Filters Section */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
+          {/* FIXED: Enhanced Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
             <input
               type="text"
               placeholder="Search courses..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-10 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              autoComplete="off"
             />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+                title="Clear search"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* Category Filter */}
@@ -372,7 +448,7 @@ const CourseList = () => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input-field pl-10 appearance-none"
+              className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white"
             >
               <option value="all">All Categories</option>
               {categories.map(category => (
@@ -385,7 +461,7 @@ const CourseList = () => {
           <select
             value={selectedLevel}
             onChange={(e) => setSelectedLevel(e.target.value)}
-            className="input-field"
+            className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white"
           >
             <option value="all">All Levels</option>
             {levels.map(level => (
@@ -393,9 +469,19 @@ const CourseList = () => {
             ))}
           </select>
 
-          {/* Results Count */}
-          <div className="flex items-center text-sm text-secondary-600">
-            <span>{filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found</span>
+          {/* Results Count and Clear Button */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-secondary-600">
+              {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found
+            </span>
+            {(searchTerm || selectedCategory !== 'all' || selectedLevel !== 'all') && (
+              <button
+                onClick={handleClearSearch}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -411,7 +497,7 @@ const CourseList = () => {
             <div key={course.id} className="bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden card-hover">
               <div className="relative">
                 <img
-                  src={course.image}
+                  src={course.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80'}
                   alt={course.title}
                   className="w-full h-48 object-cover"
                 />
@@ -487,7 +573,7 @@ const CourseList = () => {
                   <div className="flex items-center space-x-4 text-sm text-secondary-500">
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-1" />
-                      <span>{course.enrolledStudents || 0}/{course.maxStudents}</span>
+                      <span>{course.enrolledStudents || 0}/{course.maxStudents || 0}</span>
                     </div>
                     <div className="flex items-center">
                       <Star className="h-4 w-4 mr-1 text-yellow-500" />
@@ -575,22 +661,36 @@ const CourseList = () => {
         })}
       </div>
 
+      {/* No Results Message */}
       {filteredCourses.length === 0 && (
         <div className="text-center py-12">
           <BookOpen className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-secondary-900 mb-2">
-            {user?.role === 'instructor' ? 'No courses created yet' : 'No courses found'}
+            {searchTerm || selectedCategory !== 'all' || selectedLevel !== 'all'
+              ? 'No courses match your search criteria'
+              : (user?.role === 'instructor' ? 'No courses created yet' : 'No courses found')
+            }
           </h3>
           <p className="text-secondary-600 mb-4">
-            {user?.role === 'instructor' 
-              ? 'Create your first course to start teaching students.'
-              : 'Try adjusting your search criteria or filters to find courses.'
+            {searchTerm || selectedCategory !== 'all' || selectedLevel !== 'all'
+              ? 'Try adjusting your search terms or filters to find courses.'
+              : (user?.role === 'instructor' 
+                ? 'Create your first course to start teaching students.'
+                : 'Try adjusting your search criteria or filters to find courses.')
             }
           </p>
-          {user?.role === 'instructor' && (
+          {(searchTerm || selectedCategory !== 'all' || selectedLevel !== 'all') && (
+            <button
+              onClick={handleClearSearch}
+              className="btn-primary"
+            >
+              Clear Search
+            </button>
+          )}
+          {user?.role === 'instructor' && !searchTerm && selectedCategory === 'all' && selectedLevel === 'all' && (
             <Link
               to="/create-course"
-              className="btn-primary"
+              className="btn-primary inline-block"
             >
               Create Your First Course
             </Link>
