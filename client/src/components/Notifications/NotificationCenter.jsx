@@ -12,6 +12,10 @@ import {
   X,
   Settings,
   Filter,
+  Users,
+  Award,
+  Clock,
+  TrendingUp,
 } from 'lucide-react';
 
 const NotificationCenter = () => {
@@ -20,97 +24,219 @@ const NotificationCenter = () => {
   const [filter, setFilter] = useState('all');
   const [showSettings, setShowSettings] = useState(false);
 
-  // Mock notifications data
-  const mockNotifications = [
-    {
-      id: 1,
-      type: 'assignment',
-      title: 'New Assignment: React Todo App',
-      message: 'A new assignment has been posted in Introduction to React course.',
-      courseId: 1,
-      courseName: 'Introduction to React',
-      timestamp: '2024-02-15T10:30:00Z',
-      read: false,
-      priority: 'high',
-      icon: FileText,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-    },
-    {
-      id: 2,
-      type: 'grade',
-      title: 'Assignment Graded',
-      message: 'Your React Todo App assignment has been graded. Score: 85/100',
-      courseId: 1,
-      courseName: 'Introduction to React',
-      timestamp: '2024-02-14T15:45:00Z',
-      read: false,
-      priority: 'medium',
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-    },
-    {
-      id: 3,
-      type: 'discussion',
-      title: 'New Reply in Discussion',
-      message: 'Dr. Sarah Johnson replied to your question about useState hooks.',
-      courseId: 1,
-      courseName: 'Introduction to React',
-      timestamp: '2024-02-14T09:20:00Z',
-      read: true,
-      priority: 'low',
-      icon: MessageSquare,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-    },
-    {
-      id: 4,
-      type: 'deadline',
-      title: 'Assignment Due Soon',
-      message: 'Component Library assignment is due in 2 days.',
-      courseId: 1,
-      courseName: 'Introduction to React',
-      timestamp: '2024-02-13T08:00:00Z',
-      read: true,
-      priority: 'high',
-      icon: AlertCircle,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-    },
-    {
-      id: 5,
-      type: 'course',
-      title: 'New Course Module Available',
-      message: 'Module 4: Handling Events is now available in your React course.',
-      courseId: 1,
-      courseName: 'Introduction to React',
-      timestamp: '2024-02-12T14:30:00Z',
-      read: true,
-      priority: 'medium',
-      icon: BookOpen,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-    },
-    {
-      id: 6,
-      type: 'announcement',
-      title: 'Course Schedule Update',
-      message: 'The live session scheduled for tomorrow has been moved to Friday.',
-      courseId: 2,
-      courseName: 'Advanced JavaScript',
-      timestamp: '2024-02-11T16:15:00Z',
-      read: true,
-      priority: 'medium',
-      icon: Info,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-    },
-  ];
+  // Role-specific notifications
+  const getNotificationsForRole = () => {
+    const baseNotifications = [
+      {
+        id: 1,
+        type: 'announcement',
+        title: 'Welcome to LearnSphere!',
+        message: 'Welcome to our learning management system. Explore courses and start your learning journey.',
+        timestamp: '2024-02-15T10:30:00Z',
+        read: false,
+        priority: 'medium',
+        icon: Info,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+      },
+      {
+        id: 2,
+        type: 'system',
+        title: 'System Maintenance Scheduled',
+        message: 'Scheduled maintenance will occur on Sunday from 2:00 AM to 4:00 AM EST.',
+        timestamp: '2024-02-14T15:45:00Z',
+        read: true,
+        priority: 'high',
+        icon: AlertCircle,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50',
+      },
+    ];
+
+    if (user?.role === 'student') {
+      return [
+        ...baseNotifications,
+        {
+          id: 3,
+          type: 'assignment',
+          title: 'New Assignment: React Todo App',
+          message: 'A new assignment has been posted in Introduction to React course.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-15T10:30:00Z',
+          read: false,
+          priority: 'high',
+          icon: FileText,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+        },
+        {
+          id: 4,
+          type: 'grade',
+          title: 'Assignment Graded',
+          message: 'Your React Todo App assignment has been graded. Score: 85/100',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-14T15:45:00Z',
+          read: false,
+          priority: 'medium',
+          icon: Award,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+        },
+        {
+          id: 5,
+          type: 'discussion',
+          title: 'New Reply in Discussion',
+          message: 'Dr. Sarah Johnson replied to your question about useState hooks.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-14T09:20:00Z',
+          read: true,
+          priority: 'low',
+          icon: MessageSquare,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-50',
+        },
+        {
+          id: 6,
+          type: 'deadline',
+          title: 'Assignment Due Soon',
+          message: 'Component Library assignment is due in 2 days.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-13T08:00:00Z',
+          read: true,
+          priority: 'high',
+          icon: Clock,
+          color: 'text-orange-600',
+          bgColor: 'bg-orange-50',
+        },
+      ];
+    }
+
+    if (user?.role === 'instructor') {
+      return [
+        ...baseNotifications,
+        {
+          id: 3,
+          type: 'submission',
+          title: 'New Assignment Submission',
+          message: 'John Smith submitted the React Todo App assignment.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-15T14:30:00Z',
+          read: false,
+          priority: 'medium',
+          icon: FileText,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+        },
+        {
+          id: 4,
+          type: 'enrollment',
+          title: 'New Student Enrollment',
+          message: 'Jane Doe has enrolled in your Advanced JavaScript course.',
+          courseId: 2,
+          courseName: 'Advanced JavaScript',
+          timestamp: '2024-02-14T11:20:00Z',
+          read: false,
+          priority: 'low',
+          icon: Users,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+        },
+        {
+          id: 5,
+          type: 'discussion',
+          title: 'New Discussion Post',
+          message: 'A student posted a new question in your React course discussion.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-13T16:45:00Z',
+          read: true,
+          priority: 'medium',
+          icon: MessageSquare,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-50',
+        },
+        {
+          id: 6,
+          type: 'analytics',
+          title: 'Course Performance Update',
+          message: 'Your React course has achieved 90% completion rate this month.',
+          courseId: 1,
+          courseName: 'Introduction to React',
+          timestamp: '2024-02-12T09:00:00Z',
+          read: true,
+          priority: 'low',
+          icon: TrendingUp,
+          color: 'text-indigo-600',
+          bgColor: 'bg-indigo-50',
+        },
+      ];
+    }
+
+    if (user?.role === 'admin') {
+      return [
+        ...baseNotifications,
+        {
+          id: 3,
+          type: 'course-approval',
+          title: 'New Course Pending Approval',
+          message: 'Dr. Sarah Johnson submitted "Advanced React Patterns" for approval.',
+          timestamp: '2024-02-15T11:30:00Z',
+          read: false,
+          priority: 'high',
+          icon: BookOpen,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+        },
+        {
+          id: 4,
+          type: 'enrollment-approval',
+          title: 'Enrollment Request Pending',
+          message: 'Mike Johnson requested enrollment in Advanced JavaScript course.',
+          timestamp: '2024-02-14T14:20:00Z',
+          read: false,
+          priority: 'medium',
+          icon: Users,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+        },
+        {
+          id: 5,
+          type: 'user-registration',
+          title: 'New User Registration',
+          message: 'Emily Davis registered as a new instructor.',
+          timestamp: '2024-02-13T10:15:00Z',
+          read: true,
+          priority: 'low',
+          icon: Users,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-50',
+        },
+        {
+          id: 6,
+          type: 'system-alert',
+          title: 'High Server Load Detected',
+          message: 'Server load is above normal. Consider scaling resources.',
+          timestamp: '2024-02-12T22:30:00Z',
+          read: true,
+          priority: 'high',
+          icon: AlertCircle,
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+        },
+      ];
+    }
+
+    return baseNotifications;
+  };
 
   useEffect(() => {
-    setNotifications(mockNotifications);
-  }, []);
+    setNotifications(getNotificationsForRole());
+  }, [user]);
 
   const filteredNotifications = notifications.filter(notification => {
     if (filter === 'all') return true;
@@ -161,6 +287,45 @@ const NotificationCenter = () => {
     }
   };
 
+  const getFilterOptions = () => {
+    const baseOptions = [
+      { value: 'all', label: 'All', count: notifications.length },
+      { value: 'unread', label: 'Unread', count: unreadCount },
+    ];
+
+    if (user?.role === 'student') {
+      return [
+        ...baseOptions,
+        { value: 'assignment', label: 'Assignments', count: notifications.filter(n => n.type === 'assignment').length },
+        { value: 'grade', label: 'Grades', count: notifications.filter(n => n.type === 'grade').length },
+        { value: 'discussion', label: 'Discussions', count: notifications.filter(n => n.type === 'discussion').length },
+        { value: 'deadline', label: 'Deadlines', count: notifications.filter(n => n.type === 'deadline').length },
+      ];
+    }
+
+    if (user?.role === 'instructor') {
+      return [
+        ...baseOptions,
+        { value: 'submission', label: 'Submissions', count: notifications.filter(n => n.type === 'submission').length },
+        { value: 'enrollment', label: 'Enrollments', count: notifications.filter(n => n.type === 'enrollment').length },
+        { value: 'discussion', label: 'Discussions', count: notifications.filter(n => n.type === 'discussion').length },
+        { value: 'analytics', label: 'Analytics', count: notifications.filter(n => n.type === 'analytics').length },
+      ];
+    }
+
+    if (user?.role === 'admin') {
+      return [
+        ...baseOptions,
+        { value: 'course-approval', label: 'Course Approvals', count: notifications.filter(n => n.type === 'course-approval').length },
+        { value: 'enrollment-approval', label: 'Enrollment Approvals', count: notifications.filter(n => n.type === 'enrollment-approval').length },
+        { value: 'user-registration', label: 'User Registrations', count: notifications.filter(n => n.type === 'user-registration').length },
+        { value: 'system-alert', label: 'System Alerts', count: notifications.filter(n => n.type === 'system-alert').length },
+      ];
+    }
+
+    return baseOptions;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,14 +361,7 @@ const NotificationCenter = () => {
       {/* Filters */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
         <div className="flex flex-wrap gap-2">
-          {[
-            { value: 'all', label: 'All', count: notifications.length },
-            { value: 'unread', label: 'Unread', count: unreadCount },
-            { value: 'assignment', label: 'Assignments', count: notifications.filter(n => n.type === 'assignment').length },
-            { value: 'grade', label: 'Grades', count: notifications.filter(n => n.type === 'grade').length },
-            { value: 'discussion', label: 'Discussions', count: notifications.filter(n => n.type === 'discussion').length },
-            { value: 'deadline', label: 'Deadlines', count: notifications.filter(n => n.type === 'deadline').length },
-          ].map((filterOption) => (
+          {getFilterOptions().map((filterOption) => (
             <button
               key={filterOption.value}
               onClick={() => setFilter(filterOption.value)}
@@ -233,18 +391,38 @@ const NotificationCenter = () => {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-secondary-900">Assignment Reminders</h4>
-                <p className="text-sm text-secondary-600">Get reminded about upcoming deadlines</p>
+                <h4 className="font-medium text-secondary-900">Push Notifications</h4>
+                <p className="text-sm text-secondary-600">Receive browser push notifications</p>
               </div>
               <input type="checkbox" className="toggle" defaultChecked />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-secondary-900">Discussion Updates</h4>
-                <p className="text-sm text-secondary-600">Notifications for new replies and mentions</p>
+            {user?.role === 'student' && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-secondary-900">Assignment Reminders</h4>
+                  <p className="text-sm text-secondary-600">Get reminded about upcoming deadlines</p>
+                </div>
+                <input type="checkbox" className="toggle" defaultChecked />
               </div>
-              <input type="checkbox" className="toggle" defaultChecked />
-            </div>
+            )}
+            {user?.role === 'instructor' && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-secondary-900">Submission Alerts</h4>
+                  <p className="text-sm text-secondary-600">Get notified when students submit assignments</p>
+                </div>
+                <input type="checkbox" className="toggle" defaultChecked />
+              </div>
+            )}
+            {user?.role === 'admin' && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-secondary-900">System Alerts</h4>
+                  <p className="text-sm text-secondary-600">Receive critical system notifications</p>
+                </div>
+                <input type="checkbox" className="toggle" defaultChecked />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -275,7 +453,7 @@ const NotificationCenter = () => {
                         {notification.message}
                       </p>
                       <div className="flex items-center space-x-4 mt-2 text-xs text-secondary-500">
-                        <span>{notification.courseName}</span>
+                        {notification.courseName && <span>{notification.courseName}</span>}
                         <span>{getTimeAgo(notification.timestamp)}</span>
                       </div>
                     </div>
