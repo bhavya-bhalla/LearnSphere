@@ -10,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 👉 Swagger setup goes here
+require("./swagger")(app);
+
 // Routes
 app.use('/api/auth', authRoutes);
 
@@ -25,3 +28,6 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/learningsphere', 
 .catch((err) => {
   console.log('❌ DB connection error:', err.message);
 });
+
+module.exports = app; // ✅ Export app for testing
+// This allows you to use `supertest` in your tests to make requests to the app
