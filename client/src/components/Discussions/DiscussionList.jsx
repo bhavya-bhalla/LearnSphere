@@ -168,13 +168,32 @@ const DiscussionList = () => {
 
   // Get courses available to the user
   const getAvailableCourses = () => {
+    // Get courses from both mock data and localStorage (approved courses)
+    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    const allCourses = [...mockCourses, ...storedCourses];
+    
     if (user?.role === 'student') {
       const enrolledCourses = user.enrolledCourses || [1, 2];
-      return mockCourses.filter(course => enrolledCourses.includes(course.id));
+      
+      // Also check approved enrollments
+      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      const approvedCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+      
+      // Combine enrolled and approved course IDs
+      const allEnrolledCourseIds = [...new Set([...enrolledCourses, ...approvedCourseIds])];
+      
+      return allCourses.filter(course => 
+        course.status === 'active' && allEnrolledCourseIds.includes(course.id)
+      );
     } else if (user?.role === 'instructor') {
-      return mockCourses.filter(course => course.instructorId === user.id);
+      return allCourses.filter(course => 
+        course.instructorId === user.id && course.status === 'active'
+      );
     }
-    return mockCourses;
+    
+    // Admin can access all active courses
+    return allCourses.filter(course => course.status === 'active');
   };
 
   const availableCourses = getAvailableCourses();
