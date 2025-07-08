@@ -1108,18 +1108,15 @@ const CreateCourse = () => {
                             ))}
                           </select>
                         </div>
-                        {/* FIXED: Duration field only shows for video lessons */}
-                        {lesson.type === 'video' && (
-                          <div>
-                            <input
-                              type="text"
-                              value={lesson.duration}
-                              onChange={(e) => handleLessonChange(module.id, lesson.id, 'duration', e.target.value)}
-                              className="input-field text-sm"
-                              placeholder="Duration (e.g., 15 min)"
-                            />
-                          </div>
-                        )}
+                        <div>
+                          <input
+                            type="text"
+                            value={lesson.duration}
+                            onChange={(e) => handleLessonChange(module.id, lesson.id, 'duration', e.target.value)}
+                            className="input-field text-sm"
+                            placeholder="Duration (e.g., 15 min)"
+                          />
+                        </div>
                       </div>
 
                       {/* Content type description */}

@@ -212,11 +212,6 @@ const QuizList = () => {
     }
   };
 
-  const getQuestionCount = (questions) => {
-    // Handle both array of questions and number
-    return Array.isArray(questions) ? questions.length : questions;
-  };
-
   const handleDeleteQuiz = (quizId) => {
     if (window.confirm('Are you sure you want to delete this quiz?')) {
       const storedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
@@ -421,7 +416,7 @@ const QuizList = () => {
                   <div className="flex items-center justify-between text-sm text-secondary-600">
                     <div className="flex items-center">
                       <FileQuestion className="h-4 w-4 mr-1" />
-                      <span>{getQuestionCount(quiz.questions)} questions</span>
+                      <span>{quiz.questions} questions</span>
                     </div>
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-1" />

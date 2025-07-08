@@ -13,7 +13,6 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { mockCourses } from '../../utils/mockData';
 import { eventBus, EVENTS } from '../../utils/eventBus';
 import toast from 'react-hot-toast';
 
@@ -47,17 +46,12 @@ const CreateQuiz = () => {
 
   const [previewMode, setPreviewMode] = useState(false);
 
-  // Get instructor courses - FIXED to include approved courses
-  const getInstructorCourses = () => {
-    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    const allCourses = [...mockCourses, ...storedCourses];
-    
-    return allCourses.filter(course => 
-      course.instructorId === user?.id && course.status === 'active'
-    );
-  };
-
-  const instructorCourses = getInstructorCourses();
+  // Mock courses for instructor
+  const instructorCourses = [
+    { id: 1, title: 'Introduction to React' },
+    { id: 2, title: 'Advanced JavaScript' },
+    { id: 3, title: 'UI/UX Design Principles' },
+  ];
 
   const questionTypes = [
     { value: 'multiple-choice', label: 'Multiple Choice' },
@@ -292,35 +286,6 @@ const CreateQuiz = () => {
       </div>
     </div>
   );
-
-  // Show no access message if instructor has no active courses
-  if (instructorCourses.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/quizzes')}
-            className="flex items-center text-secondary-600 hover:text-secondary-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Quizzes
-          </button>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <div className="flex items-center space-x-3">
-            <FileQuestion className="h-6 w-6 text-yellow-600" />
-            <div>
-              <h3 className="text-lg font-medium text-yellow-800">No Active Courses</h3>
-              <p className="text-yellow-700 mt-1">
-                You need to have active courses to create quizzes. Please create a course or wait for course approval.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (previewMode) {
     return (

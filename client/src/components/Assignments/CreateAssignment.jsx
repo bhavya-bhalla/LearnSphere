@@ -15,7 +15,6 @@ import {
   File,
   Link as LinkIcon,
 } from 'lucide-react';
-import { mockCourses } from '../../utils/mockData';
 import toast from 'react-hot-toast';
 
 const CreateAssignment = () => {
@@ -43,17 +42,12 @@ const CreateAssignment = () => {
     { id: 1, text: 'Submit your work in the specified format' }
   ]);
 
-  // Get instructor courses - FIXED to include approved courses
-  const getInstructorCourses = () => {
-    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    const allCourses = [...mockCourses, ...storedCourses];
-    
-    return allCourses.filter(course => 
-      course.instructorId === user?.id && course.status === 'active'
-    );
-  };
-
-  const instructorCourses = getInstructorCourses();
+  // Mock courses for instructor
+  const instructorCourses = [
+    { id: 1, title: 'Introduction to React' },
+    { id: 2, title: 'Advanced JavaScript' },
+    { id: 3, title: 'UI/UX Design Principles' },
+  ];
 
   const submissionTypes = [
     { value: 'file', label: 'File Upload Only', description: 'Students upload documents, images, or other files' },
@@ -158,35 +152,6 @@ const CreateAssignment = () => {
   const handleSaveDraft = () => {
     toast.success('Assignment saved as draft');
   };
-
-  // Show no access message if instructor has no active courses
-  if (instructorCourses.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/assignments')}
-            className="flex items-center text-secondary-600 hover:text-secondary-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Assignments
-          </button>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <div className="flex items-center space-x-3">
-            <FileText className="h-6 w-6 text-yellow-600" />
-            <div>
-              <h3 className="text-lg font-medium text-yellow-800">No Active Courses</h3>
-              <p className="text-yellow-700 mt-1">
-                You need to have active courses to create assignments. Please create a course or wait for course approval.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -539,12 +504,12 @@ const CreateAssignment = () => {
 
       {/* Warning for late submissions */}
       {assignmentData.allowLateSubmissions && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
             <div>
-              <h3 className="text-sm font-medium text-blue-800">Late Submission Policy</h3>
-              <p className="text-sm text-blue-700 mt-1">
+              <h3 className="text-sm font-medium text-yellow-800">Late Submission Policy</h3>
+              <p className="text-sm text-yellow-700 mt-1">
                 Late submissions are allowed for this assignment. Make sure to communicate your late submission policy clearly to your students.
               </p>
             </div>
