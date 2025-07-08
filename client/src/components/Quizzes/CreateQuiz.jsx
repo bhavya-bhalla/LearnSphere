@@ -1,597 +1,376 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
-  ArrowLeft,
+  MessageSquare,
+  Search,
+  Filter,
   Plus,
-  Trash2,
-  Save,
-  Eye,
+  BookOpen,
+  User,
   Clock,
-  Calendar,
-  FileQuestion,
-  CheckCircle,
-  X,
+  MessageCircle,
+  Pin,
+  TrendingUp,
 } from 'lucide-react';
 import { mockCourses } from '../../utils/mockData';
 import { eventBus, EVENTS } from '../../utils/eventBus';
-import toast from 'react-hot-toast';
 
-const CreateQuiz = () => {
-  const navigate = useNavigate();
+const DiscussionList = () => {
   const { user } = useSelector((state) => state.auth);
-  const [quizData, setQuizData] = useState({
-    title: '',
-    description: '',
-    courseId: '',
-    timeLimit: 30,
-    maxAttempts: 3,
-    dueDate: '',
-    instructions: '',
-    shuffleQuestions: false,
-    showResults: true,
-    passingScore: 70,
-  });
+  const [discussions, setDiscussions] = useState([]);
+  const [filteredDiscussions, setFilteredDiscussions] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
 
-  const [questions, setQuestions] = useState([
+  // Mock discussions data
+  const mockDiscussions = [
     {
       id: 1,
-      type: 'multiple-choice',
-      question: '',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
-      points: 1,
-      explanation: '',
+      courseId: 1,
+      courseName: 'Introduction to React',
+      title: 'Help with useState Hook',
+      content: 'I am having trouble understanding when to use useState vs useEffect. Can someone explain the difference and when to use each one?',
+      author: 'John Smith',
+      authorId: 5,
+      date: '2024-02-08T10:30:00',
+      replies: [
+        {
+          id: 1,
+          content: 'useState is for managing component state, while useEffect is for side effects like API calls.',
+          author: 'Dr. Sarah Johnson',
+          authorId: 2,
+          date: '2024-02-08T11:00:00',
+        },
+      ],
+      pinned: false,
+      views: 45,
+      likes: 8,
+    },
+    {
+      id: 2,
+      courseId: 2,
+      courseName: 'Advanced JavaScript',
+      title: 'Best Practices for Async/Await',
+      content: 'What are some best practices when working with async/await in JavaScript? I keep running into issues with error handling.',
+      author: 'Jane Doe',
+      authorId: 6,
+      date: '2024-02-07T14:20:00',
+      replies: [],
+      pinned: true,
+      views: 32,
+      likes: 5,
+    },
+  ];
+
+  useEffect(() => {
+    loadDiscussions();
+
+    // Listen for real-time updates
+    const handleDiscussionCreated = (newDiscussion) => {
+      setDiscussions(prev => [newDiscussion, ...prev]);
+    };
+
+    eventBus.on(EVENTS.DISCUSSION_CREATED, handleDiscussionCreated);
+
+    return () => {
+      eventBus.off(EVENTS.DISCUSSION_CREATED, handleDiscussionCreated);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    filterDiscussions();
+  }, [discussions, searchTerm, courseFilter, sortBy]);
+
+  const loadDiscussions = () => {
+    // Load discussions from localStorage and merge with mock data
+    const storedDiscussions = JSON.parse(localStorage.getItem('discussions') || '[]');
+    let allDiscussions = [...mockDiscussions, ...storedDiscussions];
+
+    // Filter discussions based on user's enrolled courses
+    if (user?.role === 'student') {
+      const enrolledCourses = user.enrolledCourses || [1, 2]; // Default enrolled courses for demo
+      allDiscussions = allDiscussions.filter(discussion => 
+        enrolledCourses.includes(discussion.courseId)
+      );
+    } else if (user?.role === 'instructor') {
+      allDiscussions = allDiscussions.filter(discussion => {
+        const course = mockCourses.find(c => c.id === discussion.courseId);
+        return course?.instructorId === user.id;
+      });
     }
-  ]);
 
-  const [previewMode, setPreviewMode] = useState(false);
+    // Add course information to discussions
+    allDiscussions = allDiscussions.map(discussion => {
+      const course = mockCourses.find(c => c.id === discussion.courseId);
+      return {
+        ...discussion,
+        courseName: course?.title || discussion.courseName || 'Unknown Course',
+      };
+    });
 
-  // Get instructor courses - FIXED to include approved courses
-  const getInstructorCourses = () => {
+    setDiscussions(allDiscussions);
+  };
+
+  const filterDiscussions = () => {
+    let filtered = discussions;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(discussion =>
+        discussion.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        discussion.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        discussion.author.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Course filter
+    if (courseFilter !== 'all') {
+      filtered = filtered.filter(discussion => discussion.courseId === parseInt(courseFilter));
+    }
+
+    // Sort discussions
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'recent':
+          return new Date(b.date) - new Date(a.date);
+        case 'popular':
+          return (b.replies?.length || 0) - (a.replies?.length || 0);
+        case 'title':
+          return a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    });
+
+    // Put pinned discussions at the top
+    filtered.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
+
+    setFilteredDiscussions(filtered);
+  };
+
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const discussionDate = new Date(date);
+    const diffTime = Math.abs(now - discussionDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+    return `${Math.ceil(diffDays / 30)} months ago`;
+  };
+
+  // Get courses available to the user
+  const getAvailableCourses = () => {
+    // Get courses from both mock data and localStorage (approved courses)
     const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
     const allCourses = [...mockCourses, ...storedCourses];
     
-    return allCourses.filter(course => 
-      course.instructorId === user?.id && course.status === 'active'
-    );
-  };
-
-  const instructorCourses = getInstructorCourses();
-
-  const questionTypes = [
-    { value: 'multiple-choice', label: 'Multiple Choice' },
-    { value: 'true-false', label: 'True/False' },
-    { value: 'short-answer', label: 'Short Answer' },
-    { value: 'essay', label: 'Essay' },
-  ];
-
-  const handleQuizDataChange = (field, value) => {
-    setQuizData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleQuestionChange = (questionId, field, value) => {
-    setQuestions(prev => prev.map(q => 
-      q.id === questionId ? { ...q, [field]: value } : q
-    ));
-  };
-
-  const handleOptionChange = (questionId, optionIndex, value) => {
-    setQuestions(prev => prev.map(q => 
-      q.id === questionId 
-        ? { ...q, options: q.options.map((opt, idx) => idx === optionIndex ? value : opt) }
-        : q
-    ));
-  };
-
-  const addQuestion = () => {
-    const newQuestion = {
-      id: Date.now(),
-      type: 'multiple-choice',
-      question: '',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
-      points: 1,
-      explanation: '',
-    };
-    setQuestions(prev => [...prev, newQuestion]);
-  };
-
-  const removeQuestion = (questionId) => {
-    if (questions.length > 1) {
-      setQuestions(prev => prev.filter(q => q.id !== questionId));
+    if (user?.role === 'student') {
+      const enrolledCourses = user.enrolledCourses || [1, 2];
+      
+      // Also check approved enrollments
+      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      const approvedCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+      
+      // Combine enrolled and approved course IDs
+      const allEnrolledCourseIds = [...new Set([...enrolledCourses, ...approvedCourseIds])];
+      
+      return allCourses.filter(course => 
+        course.status === 'active' && allEnrolledCourseIds.includes(course.id)
+      );
+    } else if (user?.role === 'instructor') {
+      return allCourses.filter(course => 
+        course.instructorId === user.id && course.status === 'active'
+      );
     }
+    
+    // Admin can access all active courses
+    return allCourses.filter(course => course.status === 'active');
   };
 
-  const duplicateQuestion = (questionId) => {
-    const questionToDuplicate = questions.find(q => q.id === questionId);
-    const duplicatedQuestion = {
-      ...questionToDuplicate,
-      id: Date.now(),
-      question: questionToDuplicate.question + ' (Copy)',
-    };
-    setQuestions(prev => [...prev, duplicatedQuestion]);
-  };
-
-  const handleSaveQuiz = () => {
-    if (!quizData.title || !quizData.courseId || questions.some(q => !q.question)) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    // Create new quiz object
-    const newQuiz = {
-      id: Date.now(),
-      ...quizData,
-      questions: questions.filter(q => q.question.trim() !== ''),
-      instructorId: user?.id,
-      instructor: user?.name,
-      courseName: instructorCourses.find(c => c.id === parseInt(quizData.courseId))?.title,
-      createdAt: new Date().toISOString(),
-      totalSubmissions: 0,
-      averageScore: 0,
-      status: 'active',
-    };
-
-    // Save to localStorage
-    const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-    existingQuizzes.push(newQuiz);
-    localStorage.setItem('quizzes', JSON.stringify(existingQuizzes));
-
-    // Emit event for real-time updates
-    eventBus.emit(EVENTS.QUIZ_CREATED, newQuiz);
-
-    toast.success('Quiz created successfully!');
-    navigate('/quizzes');
-  };
-
-  const handlePreview = () => {
-    setPreviewMode(!previewMode);
-  };
-
-  const getTotalPoints = () => {
-    return questions.reduce((total, q) => total + q.points, 0);
-  };
-
-  const renderQuestionEditor = (question, index) => (
-    <div key={question.id} className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-secondary-900">
-          Question {index + 1}
-        </h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => duplicateQuestion(question.id)}
-            className="p-2 text-secondary-600 hover:text-secondary-900 rounded-lg hover:bg-secondary-100"
-            title="Duplicate Question"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          {questions.length > 1 && (
-            <button
-              onClick={() => removeQuestion(question.id)}
-              className="p-2 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50"
-              title="Delete Question"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-2">
-            Question Type
-          </label>
-          <select
-            value={question.type}
-            onChange={(e) => handleQuestionChange(question.id, 'type', e.target.value)}
-            className="input-field"
-          >
-            {questionTypes.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-2">
-            Points
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={question.points}
-            onChange={(e) => handleQuestionChange(question.id, 'points', parseInt(e.target.value))}
-            className="input-field"
-          />
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-secondary-700 mb-2">
-          Question Text *
-        </label>
-        <textarea
-          value={question.question}
-          onChange={(e) => handleQuestionChange(question.id, 'question', e.target.value)}
-          className="input-field h-24 resize-none"
-          placeholder="Enter your question here..."
-          required
-        />
-      </div>
-
-      {question.type === 'multiple-choice' && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-secondary-700 mb-2">
-            Answer Options
-          </label>
-          <div className="space-y-2">
-            {question.options.map((option, optionIndex) => (
-              <div key={optionIndex} className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name={`correct-${question.id}`}
-                  checked={question.correctAnswer === optionIndex}
-                  onChange={() => handleQuestionChange(question.id, 'correctAnswer', optionIndex)}
-                  className="text-primary-600 focus:ring-primary-500"
-                />
-                <input
-                  type="text"
-                  value={option}
-                  onChange={(e) => handleOptionChange(question.id, optionIndex, e.target.value)}
-                  className="input-field flex-1"
-                  placeholder={`Option ${optionIndex + 1}`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {question.type === 'true-false' && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-secondary-700 mb-2">
-            Correct Answer
-          </label>
-          <div className="flex space-x-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name={`tf-${question.id}`}
-                checked={question.correctAnswer === true}
-                onChange={() => handleQuestionChange(question.id, 'correctAnswer', true)}
-                className="text-primary-600 focus:ring-primary-500 mr-2"
-              />
-              True
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name={`tf-${question.id}`}
-                checked={question.correctAnswer === false}
-                onChange={() => handleQuestionChange(question.id, 'correctAnswer', false)}
-                className="text-primary-600 focus:ring-primary-500 mr-2"
-              />
-              False
-            </label>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-2">
-          Explanation (Optional)
-        </label>
-        <textarea
-          value={question.explanation}
-          onChange={(e) => handleQuestionChange(question.id, 'explanation', e.target.value)}
-          className="input-field h-20 resize-none"
-          placeholder="Explain why this is the correct answer..."
-        />
-      </div>
-    </div>
-  );
-
-  // Show no access message if instructor has no active courses
-  if (instructorCourses.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/quizzes')}
-            className="flex items-center text-secondary-600 hover:text-secondary-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Quizzes
-          </button>
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <div className="flex items-center space-x-3">
-            <FileQuestion className="h-6 w-6 text-yellow-600" />
-            <div>
-              <h3 className="text-lg font-medium text-yellow-800">No Active Courses</h3>
-              <p className="text-yellow-700 mt-1">
-                You need to have active courses to create quizzes. Please create a course or wait for course approval.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (previewMode) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setPreviewMode(false)}
-            className="flex items-center text-secondary-600 hover:text-secondary-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Editor
-          </button>
-          <div className="text-sm text-secondary-600">
-            Preview Mode
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-8 shadow-sm border border-secondary-200">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-secondary-900 mb-2">{quizData.title}</h1>
-            <p className="text-secondary-600 mb-4">{quizData.description}</p>
-            <div className="flex justify-center space-x-6 text-sm text-secondary-600">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>{quizData.timeLimit} minutes</span>
-              </div>
-              <div className="flex items-center">
-                <FileQuestion className="h-4 w-4 mr-1" />
-                <span>{questions.length} questions</span>
-              </div>
-              <div>
-                <span>{getTotalPoints()} points total</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {questions.map((question, index) => (
-              <div key={question.id} className="border border-secondary-200 rounded-lg p-6">
-                <h3 className="font-medium text-secondary-900 mb-4">
-                  {index + 1}. {question.question}
-                </h3>
-                
-                {question.type === 'multiple-choice' && (
-                  <div className="space-y-2">
-                    {question.options.map((option, optionIndex) => (
-                      <label key={optionIndex} className="flex items-center">
-                        <input
-                          type="radio"
-                          name={`preview-${question.id}`}
-                          className="text-primary-600 focus:ring-primary-500 mr-3"
-                          disabled
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {question.type === 'true-false' && (
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input type="radio" name={`preview-${question.id}`} className="mr-3" disabled />
-                      True
-                    </label>
-                    <label className="flex items-center">
-                      <input type="radio" name={`preview-${question.id}`} className="mr-3" disabled />
-                      False
-                    </label>
-                  </div>
-                )}
-
-                <div className="mt-4 text-sm text-secondary-600">
-                  Points: {question.points}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const availableCourses = getAvailableCourses();
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/quizzes')}
-            className="flex items-center text-secondary-600 hover:text-secondary-900"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Quizzes
-          </button>
-          <h1 className="text-2xl font-bold text-secondary-900">Create New Quiz</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-secondary-900">Course Discussions</h1>
+          <p className="text-secondary-600 mt-1">
+            Engage with your peers and instructors in course discussions
+          </p>
         </div>
         
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handlePreview}
-            className="btn-secondary flex items-center space-x-2"
-          >
-            <Eye className="h-4 w-4" />
-            <span>Preview</span>
-          </button>
-          <button
-            onClick={handleSaveQuiz}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save Quiz</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Quiz Settings */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
-        <h2 className="text-lg font-semibold text-secondary-900 mb-4">Quiz Settings</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Quiz Title *
-            </label>
-            <input
-              type="text"
-              value={quizData.title}
-              onChange={(e) => handleQuizDataChange('title', e.target.value)}
-              className="input-field"
-              placeholder="Enter quiz title"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Course *
-            </label>
-            <select
-              value={quizData.courseId}
-              onChange={(e) => handleQuizDataChange('courseId', e.target.value)}
-              className="input-field"
-              required
-            >
-              <option value="">Select a course</option>
-              {instructorCourses.map(course => (
-                <option key={course.id} value={course.id}>{course.title}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={quizData.description}
-              onChange={(e) => handleQuizDataChange('description', e.target.value)}
-              className="input-field h-24 resize-none"
-              placeholder="Describe what this quiz covers..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Time Limit (minutes)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={quizData.timeLimit}
-              onChange={(e) => handleQuizDataChange('timeLimit', parseInt(e.target.value))}
-              className="input-field"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Max Attempts
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={quizData.maxAttempts}
-              onChange={(e) => handleQuizDataChange('maxAttempts', parseInt(e.target.value))}
-              className="input-field"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Due Date
-            </label>
-            <input
-              type="datetime-local"
-              value={quizData.dueDate}
-              onChange={(e) => handleQuizDataChange('dueDate', e.target.value)}
-              className="input-field"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Passing Score (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={quizData.passingScore}
-              onChange={(e) => handleQuizDataChange('passingScore', parseInt(e.target.value))}
-              className="input-field"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Instructions
-            </label>
-            <textarea
-              value={quizData.instructions}
-              onChange={(e) => handleQuizDataChange('instructions', e.target.value)}
-              className="input-field h-24 resize-none"
-              placeholder="Special instructions for students..."
-            />
-          </div>
-
-          <div className="md:col-span-2 flex flex-wrap gap-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={quizData.shuffleQuestions}
-                onChange={(e) => handleQuizDataChange('shuffleQuestions', e.target.checked)}
-                className="text-primary-600 focus:ring-primary-500 mr-2"
-              />
-              Shuffle Questions
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={quizData.showResults}
-                onChange={(e) => handleQuizDataChange('showResults', e.target.checked)}
-                className="text-primary-600 focus:ring-primary-500 mr-2"
-              />
-              Show Results After Submission
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Questions */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-secondary-900">
-            Questions ({questions.length}) - {getTotalPoints()} points total
-          </h2>
-          <button
-            onClick={addQuestion}
+        {availableCourses.length > 0 && (
+          <Link
+            to="/discussions/create"
             className="btn-primary flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Question</span>
-          </button>
-        </div>
-
-        {questions.map((question, index) => renderQuestionEditor(question, index))}
+            <span>Start Discussion</span>
+          </Link>
+        )}
       </div>
+
+      {/* No Access Message */}
+      {availableCourses.length === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+          <div className="flex items-center space-x-3">
+            <MessageSquare className="h-6 w-6 text-yellow-600" />
+            <div>
+              <h3 className="text-lg font-medium text-yellow-800">No Course Access</h3>
+              <p className="text-yellow-700 mt-1">
+                {user?.role === 'student' 
+                  ? 'You need to be enrolled in courses to participate in discussions. Please enroll in courses first.'
+                  : 'You need to be assigned to courses to access discussions. Please contact your administrator.'
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      {availableCourses.length > 0 && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Search discussions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+
+            {/* Course Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
+              <select
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+                className="input-field pl-10 appearance-none"
+              >
+                <option value="all">All Courses</option>
+                {availableCourses.map(course => (
+                  <option key={course.id} value={course.id}>{course.title}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort By */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="input-field"
+            >
+              <option value="recent">Most Recent</option>
+              <option value="popular">Most Popular</option>
+              <option value="title">Title A-Z</option>
+            </select>
+
+            {/* Results Count */}
+            <div className="flex items-center text-sm text-secondary-600">
+              <span>{filteredDiscussions.length} discussion{filteredDiscussions.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discussion List */}
+      {availableCourses.length > 0 && (
+        <div className="space-y-4">
+          {filteredDiscussions.map((discussion) => (
+            <div key={discussion.id} className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200 card-hover">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="bg-primary-100 p-3 rounded-full">
+                    <MessageSquare className="h-5 w-5 text-primary-600" />
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <Link
+                        to={`/discussions/${discussion.id}`}
+                        className="text-lg font-semibold text-secondary-900 hover:text-primary-600 transition-colors duration-200"
+                      >
+                        {discussion.title}
+                      </Link>
+                      {discussion.pinned && (
+                        <Pin className="h-4 w-4 text-yellow-500 inline ml-2" />
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-sm text-secondary-500">
+                      <MessageCircle className="h-4 w-4" />
+                      <span>{discussion.replies?.length || 0} replies</span>
+                    </div>
+                  </div>
+
+                  <p className="text-secondary-700 mb-3 line-clamp-2">
+                    {discussion.content}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 text-sm text-secondary-600">
+                      <div className="flex items-center">
+                        <BookOpen className="h-4 w-4 mr-1" />
+                        <span>{discussion.courseName}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-1" />
+                        <span>{discussion.author}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        <span>{getTimeAgo(discussion.date)}</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      to={`/discussions/${discussion.id}`}
+                      className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    >
+                      View Discussion →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {filteredDiscussions.length === 0 && (
+            <div className="text-center py-12">
+              <MessageSquare className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-secondary-900 mb-2">No discussions found</h3>
+              <p className="text-secondary-600 mb-4">
+                Be the first to start a discussion in your courses!
+              </p>
+              <Link
+                to="/discussions/create"
+                className="btn-primary"
+              >
+                Start First Discussion
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-export default CreateQuiz;
+export default DiscussionList;
