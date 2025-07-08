@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/server.vercel.js" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}

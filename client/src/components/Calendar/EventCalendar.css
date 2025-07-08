@@ -1,0 +1,6 @@
+/* EventCalendar.css */
+.highlight-event {
+  background-color: #2563eb !important; /* Tailwind's blue-600 */
+  color: white !important;
+  border-radius: 50%;
+}
