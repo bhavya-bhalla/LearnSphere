@@ -1,6 +1,8 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import EventCalendar from '../Calendar/EventCalendar';
+
 import {
   BookOpen,
   Users,
@@ -13,12 +15,9 @@ import {
   MessageSquare,
   Plus,
   BarChart3,
-  GraduationCap,
-  View,
+  GraduationCap
 } from 'lucide-react';
 import { mockCourses, mockAnnouncements } from '../../utils/mockData';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css'; 
 
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
@@ -98,7 +97,6 @@ const Dashboard = () => {
       ];
     }
 
-    // Admin stats
     return [
       {
         title: 'Total Courses',
@@ -251,31 +249,23 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {user?.name}! 👋
-        </h1>
+        <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.name}! 👋</h1>
         <p className="text-primary-100">
           {user?.role === 'student' && "Ready to continue your learning journey?"}
           {user?.role === 'instructor' && "Your students are waiting for your guidance."}
           {user?.role === 'admin' && "Here's your system overview for today."}
         </p>
-        {user?.role === 'student' && (
-          <div className="mt-10 flex justify-center">
-            <div className=" bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4"> Your Calendar </h2>
-              <Calendar
-                onChange={() => {}}
-                value={new Date()}
-                className="w-full border-none text-gray-700"
-                titleClassName={({ date, view }) =>
-                  'hover:bg-blue-100 rounded-xl p-1'}
-              />
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* ✅ Show calendar only once */}
+      {user?.role === 'student' && (
+        <div className="flex justify-center">
+          <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <EventCalendar />
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -303,7 +293,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity / My Courses */}
+        {/* Courses Section */}
         <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-secondary-900">
@@ -316,7 +306,7 @@ const Dashboard = () => {
               View All
             </Link>
           </div>
-          
+
           <div className="space-y-4">
             {mockCourses.slice(0, 3).map((course) => (
               <Link
@@ -332,8 +322,6 @@ const Dashboard = () => {
                 <div className="flex-1">
                   <h3 className="font-medium text-secondary-900">{course.title}</h3>
                   <p className="text-sm text-secondary-600">{course.instructor}</p>
-                  
-                  {/* Only show progress for students */}
                   {user?.role === 'student' && (
                     <div className="flex items-center mt-1">
                       <div className="w-32 bg-secondary-200 rounded-full h-2">
@@ -357,13 +345,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quick Actions & Announcements */}
+        {/* Quick Actions + Announcements */}
         <div className="space-y-6">
           {/* Quick Actions */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">
-              Quick Actions
-            </h2>
+            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-3">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
@@ -388,15 +374,14 @@ const Dashboard = () => {
 
           {/* Announcements */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">
-              Recent Announcements
-            </h2>
+            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Recent Announcements</h2>
             <div className="space-y-3">
               {mockAnnouncements.slice(0, 3).map((announcement) => (
-                <div key={announcement.id} className="border-l-4 border-primary-500 pl-4 py-2">
-                  <h3 className="font-medium text-secondary-900 text-sm">
-                    {announcement.title}
-                  </h3>
+                <div
+                  key={announcement.id}
+                  className="border-l-4 border-primary-500 pl-4 py-2"
+                >
+                  <h3 className="font-medium text-secondary-900 text-sm">{announcement.title}</h3>
                   <p className="text-xs text-secondary-600 mt-1">
                     {announcement.content.substring(0, 80)}...
                   </p>
