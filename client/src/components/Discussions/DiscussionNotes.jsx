@@ -76,15 +76,26 @@ const DiscussionNotes = () => {
     if (user?.role === 'admin') return true;
     
     if (user?.role === 'instructor') {
-      // Instructors can see notes from courses they teach
-      const course = mockCourses.find(c => c.id === note.courseId);
+      // Instructors can see notes from courses they teach - FIXED to include approved courses
+      const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+      const allCourses = [...mockCourses, ...storedCourses];
+      const course = allCourses.find(c => c.id === note.courseId);
       return course?.instructorId === user.id;
     }
     
     if (user?.role === 'student') {
-      // Students can only see notes from courses they're enrolled in
+      // Students can only see notes from courses they're enrolled in - FIXED to include approved enrollments
       const enrolledCourses = user.enrolledCourses || [1, 2]; // Default enrolled courses for demo
-      return enrolledCourses.includes(note.courseId);
+      
+      // Also check approved enrollments
+      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      const approvedCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+      
+      // Combine enrolled and approved course IDs
+      const allEnrolledCourseIds = [...new Set([...enrolledCourses, ...approvedCourseIds])];
+      
+      return allEnrolledCourseIds.includes(note.courseId);
     }
     
     return false;
@@ -120,12 +131,35 @@ const DiscussionNotes = () => {
 
   const getAvailableCourses = () => {
     if (user?.role === 'instructor') {
-      return mockCourses.filter(course => course.instructorId === user.id);
+      // Instructors can share notes in courses they teach - FIXED to include approved courses
+      const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+      const allCourses = [...mockCourses, ...storedCourses];
+      return allCourses.filter(course => 
+        course.instructorId === user.id && course.status === 'active'
+      );
     } else if (user?.role === 'student') {
+      // Students can view notes from courses they're enrolled in - FIXED to include approved enrollments
       const enrolledCourses = user.enrolledCourses || [1, 2];
-      return mockCourses.filter(course => enrolledCourses.includes(course.id));
+      
+      // Also check approved enrollments
+      const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
+      const userApprovedEnrollments = approvedEnrollments.filter(enrollment => enrollment.studentId === user.id);
+      const approvedCourseIds = userApprovedEnrollments.map(enrollment => enrollment.courseId);
+      
+      // Combine enrolled and approved course IDs
+      const allEnrolledCourseIds = [...new Set([...enrolledCourses, ...approvedCourseIds])];
+      
+      const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+      const allCourses = [...mockCourses, ...storedCourses];
+      return allCourses.filter(course => 
+        course.status === 'active' && allEnrolledCourseIds.includes(course.id)
+      );
     }
-    return mockCourses;
+    
+    // Admin can access all courses
+    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    const allCourses = [...mockCourses, ...storedCourses];
+    return allCourses.filter(course => course.status === 'active');
   };
 
   const handleCreateNote = () => {
@@ -144,7 +178,9 @@ const DiscussionNotes = () => {
       return;
     }
 
-    const course = mockCourses.find(c => c.id === parseInt(newNote.courseId));
+    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    const allCourses = [...mockCourses, ...storedCourses];
+    const course = allCourses.find(c => c.id === parseInt(newNote.courseId));
     
     const noteData = {
       id: Date.now(),
@@ -301,7 +337,9 @@ const DiscussionNotes = () => {
               <p className="text-yellow-700 mt-1">
                 {user?.role === 'student' 
                   ? 'You need to be enrolled in courses to access notes. Please enroll in courses first.'
-                  : 'You need to be assigned to courses to share notes. Please contact your administrator.'
+                  : user?.role === 'instructor'
+                  ? 'You need to have active courses to share notes. Please create or wait for course approval.'
+                  : 'No active courses available for notes.'
                 }
               </p>
             </div>

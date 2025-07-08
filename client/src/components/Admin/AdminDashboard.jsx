@@ -4,215 +4,263 @@ import {
   Users,
   BookOpen,
   TrendingUp,
+  BarChart3,
   Shield,
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle,
-  Eye,
-  UserCheck,
-  UserX,
-  GraduationCap,
-  BarChart3,
-  Calendar,
-  MessageSquare,
-  FileText,
-  Settings,
   Search,
   Filter,
   Download,
+  Eye,
   Edit,
   Trash2,
-  Plus,
+  UserCheck,
+  GraduationCap,
+  FileText,
+  X,
   Mail,
   Phone,
+  Calendar,
   Award,
+  Settings,
+  Activity,
+  Database,
+  Server,
+  Wifi,
+  HardDrive,
+  Cpu,
+  Monitor,
+  Globe,
+  Lock,
+  Unlock,
+  UserPlus,
+  UserMinus,
+  RefreshCw,
+  Plus,
 } from 'lucide-react';
-import { mockUsers, mockCourses } from '../../utils/mockData';
 import { eventBus, EVENTS } from '../../utils/eventBus';
+import { mockUsers, mockCourses } from '../../utils/mockData';
 import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {
   const { user } = useSelector((state) => state.auth);
-  const [pendingCourses, setPendingCourses] = useState([]);
-  const [pendingEnrollments, setPendingEnrollments] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [pendingCourses, setPendingCourses] = useState([]);
+  const [pendingEnrollments, setPendingEnrollments] = useState([]);
   const [instructors, setInstructors] = useState([]);
-  const [selectedTab, setSelectedTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [filterRole, setFilterRole] = useState('all');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   useEffect(() => {
-    loadAdminData();
-
+    loadData();
+    
     // Listen for real-time updates
-    const handleCourseCreated = () => {
-      loadAdminData();
-    };
-
-    const handleEnrollmentRequested = () => {
-      loadAdminData();
-    };
-
+    const handleCourseCreated = () => loadData();
+    const handleEnrollmentRequested = () => loadData();
+    
     eventBus.on(EVENTS.COURSE_CREATED, handleCourseCreated);
     eventBus.on(EVENTS.ENROLLMENT_REQUESTED, handleEnrollmentRequested);
-
+    
     return () => {
       eventBus.off(EVENTS.COURSE_CREATED, handleCourseCreated);
       eventBus.off(EVENTS.ENROLLMENT_REQUESTED, handleEnrollmentRequested);
     };
   }, []);
 
-  const loadAdminData = () => {
-    // Load pending courses from localStorage
-    const storedPendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
-    setPendingCourses(storedPendingCourses);
+  const loadData = () => {
+    // Load users
+    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const allUsers = [...mockUsers, ...storedUsers];
+    setUsers(allUsers);
+    setInstructors(allUsers.filter(user => user.role === 'instructor'));
 
-    // Load pending enrollments from localStorage
-    const storedPendingEnrollments = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
-    setPendingEnrollments(storedPendingEnrollments);
+    // Load courses
+    const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    const allCourses = [...mockCourses, ...storedCourses];
+    setCourses(allCourses);
 
-    // Load all users and courses
-    setUsers(mockUsers);
-    setCourses([...mockCourses, ...JSON.parse(localStorage.getItem('courses') || '[]')]);
-    
-    // Load instructors
-    const allInstructors = mockUsers.filter(u => u.role === 'instructor');
-    setInstructors(allInstructors);
+    // Load pending courses
+    const pending = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
+    setPendingCourses(pending);
+
+    // Load pending enrollments
+    const pendingEnroll = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
+    setPendingEnrollments(pendingEnroll);
   };
 
-  const handleCourseApproval = (courseId, approved) => {
-    const course = pendingCourses.find(c => c.id === courseId);
-    if (!course) return;
-
-    if (approved) {
-      // Move course to approved courses
+  const handleApproveCourse = (courseId) => {
+    const pendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
+    const courseToApprove = pendingCourses.find(course => course.id === courseId);
+    
+    if (courseToApprove) {
+      // Move course to approved courses with active status
       const approvedCourse = {
-        ...course,
+        ...courseToApprove,
         status: 'active',
         approvedAt: new Date().toISOString(),
         approvedBy: user?.name,
       };
-
+      
+      // Add to main courses list
       const existingCourses = JSON.parse(localStorage.getItem('courses') || '[]');
       existingCourses.push(approvedCourse);
       localStorage.setItem('courses', JSON.stringify(existingCourses));
-
+      
+      // Remove from pending courses
+      const updatedPendingCourses = pendingCourses.filter(course => course.id !== courseId);
+      localStorage.setItem('pendingCourses', JSON.stringify(updatedPendingCourses));
+      
+      // Update state
+      setCourses(prev => [...prev, approvedCourse]);
+      setPendingCourses(updatedPendingCourses);
+      
       // Emit event for real-time updates
       eventBus.emit(EVENTS.COURSE_APPROVED, approvedCourse);
-
-      toast.success(`Course "${course.title}" has been approved!`);
-    } else {
-      // Reject course
-      const rejectedCourse = {
-        ...course,
-        status: 'rejected',
-        rejectedAt: new Date().toISOString(),
-        rejectedBy: user?.name,
-      };
-
-      const rejectedCourses = JSON.parse(localStorage.getItem('rejectedCourses') || '[]');
-      rejectedCourses.push(rejectedCourse);
-      localStorage.setItem('rejectedCourses', JSON.stringify(rejectedCourses));
-
-      toast.error(`Course "${course.title}" has been rejected.`);
+      
+      toast.success(`Course "${courseToApprove.title}" approved successfully!`);
     }
-
-    // Remove from pending courses
-    const updatedPendingCourses = pendingCourses.filter(c => c.id !== courseId);
-    setPendingCourses(updatedPendingCourses);
-    localStorage.setItem('pendingCourses', JSON.stringify(updatedPendingCourses));
   };
 
-  const handleEnrollmentApproval = (enrollmentId, approved) => {
-    const enrollment = pendingEnrollments.find(e => e.id === enrollmentId);
-    if (!enrollment) return;
+  const handleRejectCourse = (courseId) => {
+    if (window.confirm('Are you sure you want to reject this course?')) {
+      const pendingCourses = JSON.parse(localStorage.getItem('pendingCourses') || '[]');
+      const courseToReject = pendingCourses.find(course => course.id === courseId);
+      
+      if (courseToReject) {
+        // Update course status to rejected
+        const rejectedCourse = {
+          ...courseToReject,
+          status: 'rejected',
+          rejectedAt: new Date().toISOString(),
+          rejectedBy: user?.name,
+        };
+        
+        // Keep in pending courses but mark as rejected
+        const updatedPendingCourses = pendingCourses.map(course => 
+          course.id === courseId ? rejectedCourse : course
+        );
+        localStorage.setItem('pendingCourses', JSON.stringify(updatedPendingCourses));
+        
+        setPendingCourses(updatedPendingCourses);
+        toast.success(`Course "${courseToReject.title}" rejected.`);
+      }
+    }
+  };
 
-    if (approved) {
-      // Approve enrollment
+  const handleApproveEnrollment = (enrollmentId) => {
+    const pendingEnrollments = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
+    const enrollmentToApprove = pendingEnrollments.find(enrollment => enrollment.id === enrollmentId);
+    
+    if (enrollmentToApprove) {
+      // Add to approved enrollments
       const approvedEnrollments = JSON.parse(localStorage.getItem('approvedEnrollments') || '[]');
-      approvedEnrollments.push({
-        ...enrollment,
+      const approvedEnrollment = {
+        ...enrollmentToApprove,
         status: 'approved',
         approvedAt: new Date().toISOString(),
         approvedBy: user?.name,
-      });
+      };
+      approvedEnrollments.push(approvedEnrollment);
       localStorage.setItem('approvedEnrollments', JSON.stringify(approvedEnrollments));
-
+      
+      // Remove from pending enrollments
+      const updatedPendingEnrollments = pendingEnrollments.filter(enrollment => enrollment.id !== enrollmentId);
+      localStorage.setItem('pendingEnrollments', JSON.stringify(updatedPendingEnrollments));
+      
+      setPendingEnrollments(updatedPendingEnrollments);
+      
       // Emit event for real-time updates
-      eventBus.emit(EVENTS.ENROLLMENT_APPROVED, enrollment);
-
-      toast.success(`Enrollment for ${enrollment.studentName} has been approved!`);
-    } else {
-      // Reject enrollment
-      const rejectedEnrollments = JSON.parse(localStorage.getItem('rejectedEnrollments') || '[]');
-      rejectedEnrollments.push({
-        ...enrollment,
-        status: 'rejected',
-        rejectedAt: new Date().toISOString(),
-        rejectedBy: user?.name,
-      });
-      localStorage.setItem('rejectedEnrollments', JSON.stringify(rejectedEnrollments));
-
-      toast.error(`Enrollment for ${enrollment.studentName} has been rejected.`);
+      eventBus.emit(EVENTS.ENROLLMENT_APPROVED, approvedEnrollment);
+      
+      toast.success(`Enrollment approved for ${enrollmentToApprove.studentName}!`);
     }
+  };
 
-    // Remove from pending enrollments
-    const updatedPendingEnrollments = pendingEnrollments.filter(e => e.id !== enrollmentId);
-    setPendingEnrollments(updatedPendingEnrollments);
-    localStorage.setItem('pendingEnrollments', JSON.stringify(updatedPendingEnrollments));
+  const handleRejectEnrollment = (enrollmentId) => {
+    if (window.confirm('Are you sure you want to reject this enrollment request?')) {
+      const pendingEnrollments = JSON.parse(localStorage.getItem('pendingEnrollments') || '[]');
+      const enrollmentToReject = pendingEnrollments.find(enrollment => enrollment.id === enrollmentId);
+      
+      if (enrollmentToReject) {
+        // Remove from pending enrollments
+        const updatedPendingEnrollments = pendingEnrollments.filter(enrollment => enrollment.id !== enrollmentId);
+        localStorage.setItem('pendingEnrollments', JSON.stringify(updatedPendingEnrollments));
+        
+        setPendingEnrollments(updatedPendingEnrollments);
+        toast.success(`Enrollment rejected for ${enrollmentToReject.studentName}.`);
+      }
+    }
   };
 
   const handleDeleteUser = (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
-      // In a real app, this would call an API
+      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+      const updatedUsers = storedUsers.filter(user => user.id !== userId);
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+      
+      setUsers(prev => prev.filter(user => user.id !== userId));
       toast.success('User deleted successfully');
     }
   };
 
   const handleDeleteCourse = (courseId) => {
     if (window.confirm('Are you sure you want to delete this course?')) {
-      const updatedCourses = courses.filter(c => c.id !== courseId);
-      setCourses(updatedCourses);
-      
-      // Update localStorage
       const storedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-      const updatedStoredCourses = storedCourses.filter(c => c.id !== courseId);
-      localStorage.setItem('courses', JSON.stringify(updatedStoredCourses));
+      const updatedCourses = storedCourses.filter(course => course.id !== courseId);
+      localStorage.setItem('courses', JSON.stringify(updatedCourses));
       
+      setCourses(prev => prev.filter(course => course.id !== courseId));
       toast.success('Course deleted successfully');
     }
   };
 
   const exportData = (type) => {
-    let csvContent = '';
+    let data = [];
     let filename = '';
-
+    
     switch (type) {
       case 'users':
-        csvContent = [
-          ['Name', 'Email', 'Role', 'Status', 'Join Date'],
-          ...users.map(u => [u.name, u.email, u.role, u.status, u.joinDate])
-        ].map(row => row.join(',')).join('\n');
-        filename = 'users_report.csv';
+        data = users.map(user => [
+          user.name,
+          user.email,
+          user.role,
+          user.status,
+          new Date(user.joinDate).toLocaleDateString()
+        ]);
+        data.unshift(['Name', 'Email', 'Role', 'Status', 'Join Date']);
+        filename = 'users.csv';
         break;
       case 'courses':
-        csvContent = [
-          ['Title', 'Instructor', 'Category', 'Level', 'Enrolled Students', 'Status'],
-          ...courses.map(c => [c.title, c.instructor, c.category, c.level, c.enrolledStudents || 0, c.status || 'active'])
-        ].map(row => row.join(',')).join('\n');
-        filename = 'courses_report.csv';
+        data = courses.map(course => [
+          course.title,
+          course.instructor,
+          course.category,
+          course.level,
+          course.enrolledStudents,
+          course.status
+        ]);
+        data.unshift(['Title', 'Instructor', 'Category', 'Level', 'Students', 'Status']);
+        filename = 'courses.csv';
         break;
       case 'instructors':
-        csvContent = [
-          ['Name', 'Email', 'Department', 'Courses Teaching', 'Join Date'],
-          ...instructors.map(i => [i.name, i.email, i.department || 'N/A', i.coursesTeaching?.length || 0, i.joinDate])
-        ].map(row => row.join(',')).join('\n');
-        filename = 'instructors_report.csv';
+        data = instructors.map(instructor => [
+          instructor.name,
+          instructor.email,
+          instructor.department || 'N/A',
+          instructor.coursesTeaching?.length || 0,
+          new Date(instructor.joinDate).toLocaleDateString()
+        ]);
+        data.unshift(['Name', 'Email', 'Department', 'Courses Teaching', 'Join Date']);
+        filename = 'instructors.csv';
         break;
     }
-
+    
+    const csvContent = data.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -222,84 +270,69 @@ const AdminDashboard = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const getSystemStats = () => {
+  const getStats = () => {
     const totalUsers = users.length;
-    const totalInstructors = users.filter(u => u.role === 'instructor').length;
-    const totalStudents = users.filter(u => u.role === 'student').length;
-    const totalCourses = courses.length;
-    const activeCourses = courses.filter(c => c.status === 'active').length;
-    const pendingCoursesCount = pendingCourses.length;
-    const pendingEnrollmentsCount = pendingEnrollments.length;
-
+    const totalCourses = courses.length + pendingCourses.length;
+    const activeUsers = users.filter(u => u.status === 'active').length;
+    const pendingApprovals = pendingCourses.filter(c => c.status === 'pending').length + pendingEnrollments.length;
+    
     return {
       totalUsers,
-      totalInstructors,
-      totalStudents,
       totalCourses,
-      activeCourses,
-      pendingCoursesCount,
-      pendingEnrollmentsCount,
+      activeUsers,
+      pendingApprovals,
     };
   };
 
-  const stats = getSystemStats();
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'pending-courses', label: 'Pending Courses', icon: BookOpen, badge: stats.pendingCoursesCount },
-    { id: 'pending-enrollments', label: 'Pending Enrollments', icon: UserCheck, badge: stats.pendingEnrollmentsCount },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'courses', label: 'Course Management', icon: GraduationCap },
-    { id: 'instructors', label: 'Instructor Management', icon: Shield },
-    { id: 'analytics', label: 'System Analytics', icon: TrendingUp },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'settings', label: 'System Settings', icon: Settings },
-  ];
+  const stats = getStats();
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || user.role === filterType;
-    return matchesSearch && matchesFilter;
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    return matchesSearch && matchesRole;
   });
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || course.status === filterType;
-    return matchesSearch && matchesFilter;
-  });
+  const filteredCourses = courses.filter(course =>
+    course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const filteredInstructors = instructors.filter(instructor => {
-    const matchesSearch = instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         instructor.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredInstructors = instructors.filter(instructor =>
+    instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    instructor.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'courses', label: 'Course Management', icon: BookOpen },
+    { id: 'instructors', label: 'Instructor Management', icon: GraduationCap },
+    { id: 'approvals', label: 'Pending Approvals', icon: Clock },
+    { id: 'analytics', label: 'System Analytics', icon: TrendingUp },
+    { id: 'reports', label: 'Reports', icon: FileText },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900">Admin Dashboard</h1>
-          <p className="text-secondary-600 mt-1">
-            Manage users, courses, and system settings
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Shield className="h-6 w-6 text-primary-600" />
-          <span className="text-sm font-medium text-primary-600">Administrator</span>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center space-x-3">
+          <Shield className="h-8 w-8 text-primary-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-secondary-900">Admin Dashboard</h1>
+            <p className="text-secondary-600">Manage users, courses, and system settings</p>
+          </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-secondary-600">Total Users</p>
               <p className="text-2xl font-bold text-secondary-900">{stats.totalUsers}</p>
-              <p className="text-xs text-secondary-500">{stats.totalInstructors} instructors, {stats.totalStudents} students</p>
             </div>
             <Users className="h-8 w-8 text-blue-600" />
           </div>
@@ -310,7 +343,6 @@ const AdminDashboard = () => {
             <div>
               <p className="text-sm font-medium text-secondary-600">Total Courses</p>
               <p className="text-2xl font-bold text-secondary-900">{stats.totalCourses}</p>
-              <p className="text-xs text-secondary-500">{stats.activeCourses} active courses</p>
             </div>
             <BookOpen className="h-8 w-8 text-green-600" />
           </div>
@@ -319,22 +351,20 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-secondary-600">Pending Approvals</p>
-              <p className="text-2xl font-bold text-secondary-900">{stats.pendingCoursesCount + stats.pendingEnrollmentsCount}</p>
-              <p className="text-xs text-secondary-500">{stats.pendingCoursesCount} courses, {stats.pendingEnrollmentsCount} enrollments</p>
+              <p className="text-sm font-medium text-secondary-600">Active Users</p>
+              <p className="text-2xl font-bold text-secondary-900">{stats.activeUsers}</p>
             </div>
-            <Clock className="h-8 w-8 text-orange-600" />
+            <UserCheck className="h-8 w-8 text-purple-600" />
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-secondary-600">System Health</p>
-              <p className="text-2xl font-bold text-secondary-900">99.9%</p>
-              <p className="text-xs text-secondary-500">All systems operational</p>
+              <p className="text-sm font-medium text-secondary-600">Pending Approvals</p>
+              <p className="text-2xl font-bold text-secondary-900">{stats.pendingApprovals}</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-purple-600" />
+            <Clock className="h-8 w-8 text-orange-600" />
           </div>
         </div>
       </div>
@@ -348,18 +378,18 @@ const AdminDashboard = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setSelectedTab(tab.id)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
-                    selectedTab === tab.id
+                    activeTab === tab.id
                       ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-secondary-600 hover:text-secondary-900'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                   <span>{tab.label}</span>
-                  {tab.badge > 0 && (
-                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                      {tab.badge}
+                  {tab.id === 'approvals' && stats.pendingApprovals > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center">
+                      {stats.pendingApprovals}
                     </span>
                   )}
                 </button>
@@ -370,180 +400,77 @@ const AdminDashboard = () => {
 
         <div className="p-6">
           {/* Overview Tab */}
-          {selectedTab === 'overview' && (
+          {activeTab === 'overview' && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-secondary-900">System Overview</h3>
               
-              {/* Recent Activity */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Recent Course Submissions</h4>
-                  {pendingCourses.slice(0, 3).map(course => (
-                    <div key={course.id} className="flex items-center justify-between p-3 bg-secondary-50 rounded-lg">
+                  <h4 className="font-medium text-secondary-900">Recent Activity</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-3 bg-secondary-50 rounded-lg">
+                      <UserPlus className="h-5 w-5 text-green-600" />
                       <div>
-                        <div className="font-medium text-secondary-900">{course.title}</div>
-                        <div className="text-sm text-secondary-600">by {course.instructor}</div>
+                        <p className="text-sm font-medium text-secondary-900">New user registered</p>
+                        <p className="text-xs text-secondary-600">2 hours ago</p>
                       </div>
-                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Pending
-                      </span>
                     </div>
-                  ))}
-                  {pendingCourses.length === 0 && (
-                    <p className="text-secondary-600 text-sm">No pending course submissions</p>
-                  )}
+                    <div className="flex items-center space-x-3 p-3 bg-secondary-50 rounded-lg">
+                      <BookOpen className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-secondary-900">Course submitted for approval</p>
+                        <p className="text-xs text-secondary-600">4 hours ago</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 bg-secondary-50 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-secondary-900">Course approved</p>
+                        <p className="text-xs text-secondary-600">1 day ago</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Recent Enrollment Requests</h4>
-                  {pendingEnrollments.slice(0, 3).map(enrollment => (
-                    <div key={enrollment.id} className="flex items-center justify-between p-3 bg-secondary-50 rounded-lg">
-                      <div>
-                        <div className="font-medium text-secondary-900">{enrollment.studentName}</div>
-                        <div className="text-sm text-secondary-600">{enrollment.courseName}</div>
-                      </div>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        Pending
-                      </span>
-                    </div>
-                  ))}
-                  {pendingEnrollments.length === 0 && (
-                    <p className="text-secondary-600 text-sm">No pending enrollment requests</p>
-                  )}
+                  <h4 className="font-medium text-secondary-900">Quick Actions</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setActiveTab('users')}
+                      className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg text-left transition-colors"
+                    >
+                      <Users className="h-6 w-6 text-blue-600 mb-2" />
+                      <p className="font-medium text-blue-900">Manage Users</p>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('courses')}
+                      className="p-4 bg-green-50 hover:bg-green-100 rounded-lg text-left transition-colors"
+                    >
+                      <BookOpen className="h-6 w-6 text-green-600 mb-2" />
+                      <p className="font-medium text-green-900">Manage Courses</p>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('approvals')}
+                      className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg text-left transition-colors"
+                    >
+                      <Clock className="h-6 w-6 text-orange-600 mb-2" />
+                      <p className="font-medium text-orange-900">Pending Approvals</p>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('analytics')}
+                      className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg text-left transition-colors"
+                    >
+                      <BarChart3 className="h-6 w-6 text-purple-600 mb-2" />
+                      <p className="font-medium text-purple-900">View Analytics</p>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Pending Courses Tab */}
-          {selectedTab === 'pending-courses' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-secondary-900">Pending Course Approvals</h3>
-              
-              {pendingCourses.length === 0 ? (
-                <div className="text-center py-8">
-                  <BookOpen className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-secondary-900 mb-2">No Pending Courses</h4>
-                  <p className="text-secondary-600">All course submissions have been reviewed.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingCourses.map(course => (
-                    <div key={course.id} className="border border-secondary-200 rounded-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-secondary-900 mb-2">{course.title}</h4>
-                          <p className="text-secondary-600 mb-3">{course.description}</p>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-secondary-600">Instructor:</span>
-                              <div className="font-medium">{course.instructor}</div>
-                            </div>
-                            <div>
-                              <span className="text-secondary-600">Category:</span>
-                              <div className="font-medium">{course.category}</div>
-                            </div>
-                            <div>
-                              <span className="text-secondary-600">Level:</span>
-                              <div className="font-medium">{course.level}</div>
-                            </div>
-                            <div>
-                              <span className="text-secondary-600">Duration:</span>
-                              <div className="font-medium">{course.duration}</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex space-x-2 ml-4">
-                          <button
-                            onClick={() => handleCourseApproval(course.id, true)}
-                            className="flex items-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            <span>Approve</span>
-                          </button>
-                          <button
-                            onClick={() => handleCourseApproval(course.id, false)}
-                            className="flex items-center space-x-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-secondary-500">
-                        Submitted on {new Date(course.submittedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pending Enrollments Tab */}
-          {selectedTab === 'pending-enrollments' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-secondary-900">Pending Enrollment Requests</h3>
-              
-              {pendingEnrollments.length === 0 ? (
-                <div className="text-center py-8">
-                  <UserCheck className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-secondary-900 mb-2">No Pending Enrollments</h4>
-                  <p className="text-secondary-600">All enrollment requests have been reviewed.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingEnrollments.map(enrollment => (
-                    <div key={enrollment.id} className="border border-secondary-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-4">
-                            <img
-                              src={enrollment.studentAvatar}
-                              alt={enrollment.studentName}
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                            <div>
-                              <h4 className="font-semibold text-secondary-900">{enrollment.studentName}</h4>
-                              <p className="text-sm text-secondary-600">{enrollment.studentEmail}</p>
-                              <p className="text-sm text-secondary-600">Course: {enrollment.courseName}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEnrollmentApproval(enrollment.id, true)}
-                            className="flex items-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            <span>Approve</span>
-                          </button>
-                          <button
-                            onClick={() => handleEnrollmentApproval(enrollment.id, false)}
-                            className="flex items-center space-x-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-secondary-500 mt-2">
-                        Requested on {new Date(enrollment.requestedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Users Tab */}
-          {selectedTab === 'users' && (
+          {/* User Management Tab */}
+          {activeTab === 'users' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-secondary-900">User Management</h3>
@@ -556,7 +483,6 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              {/* Search and Filter */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
@@ -568,24 +494,21 @@ const AdminDashboard = () => {
                     className="input-field pl-10"
                   />
                 </div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="input-field pl-10 appearance-none"
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="admin">Admins</option>
-                    <option value="instructor">Instructors</option>
-                    <option value="student">Students</option>
-                  </select>
-                </div>
+                <select
+                  value={filterRole}
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="instructor">Instructor</option>
+                  <option value="student">Student</option>
+                </select>
                 <div className="flex items-center text-sm text-secondary-600">
                   <span>{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-secondary-50 border-b border-secondary-200">
@@ -598,12 +521,12 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-secondary-200">
-                    {filteredUsers.map(user => (
+                    {filteredUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-secondary-50">
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-3">
                             <img
-                              src={user.avatar}
+                              src={user.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'}
                               alt={user.name}
                               className="w-8 h-8 rounded-full object-cover"
                             />
@@ -615,7 +538,7 @@ const AdminDashboard = () => {
                         </td>
                         <td className="py-3 px-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                            user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                            user.role === 'admin' ? 'bg-red-100 text-red-800' :
                             user.role === 'instructor' ? 'bg-blue-100 text-blue-800' :
                             'bg-green-100 text-green-800'
                           }`}>
@@ -634,20 +557,20 @@ const AdminDashboard = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
-                            <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                              <Eye className="h-4 w-4 inline mr-1" />
-                              View
-                            </button>
-                            <button className="text-secondary-600 hover:text-secondary-700 text-sm font-medium">
-                              <Edit className="h-4 w-4 inline mr-1" />
-                              Edit
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-red-600 hover:text-red-700 text-sm font-medium"
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="p-1 text-blue-600 hover:text-blue-700"
                             >
-                              <Trash2 className="h-4 w-4 inline mr-1" />
-                              Delete
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button className="p-1 text-secondary-600 hover:text-secondary-700">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -659,8 +582,8 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Courses Tab */}
-          {selectedTab === 'courses' && (
+          {/* Course Management Tab */}
+          {activeTab === 'courses' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-secondary-900">Course Management</h3>
@@ -673,72 +596,58 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              {/* Search and Filter */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search courses..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="input-field pl-10"
-                  />
-                </div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="input-field pl-10 appearance-none"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="draft">Draft</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-                <div className="flex items-center text-sm text-secondary-600">
-                  <span>{filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}</span>
-                </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search courses..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field pl-10"
+                />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map(course => (
-                  <div key={course.id} className="border border-secondary-200 rounded-lg p-4">
+                {filteredCourses.map((course) => (
+                  <div key={course.id} className="bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden">
                     <img
                       src={course.image}
                       alt={course.title}
-                      className="w-full h-32 object-cover rounded-lg mb-3"
+                      className="w-full h-32 object-cover"
                     />
-                    <h4 className="font-semibold text-secondary-900 mb-2">{course.title}</h4>
-                    <p className="text-sm text-secondary-600 mb-2">by {course.instructor}</p>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {course.status || 'active'}
-                      </span>
-                      <span className="text-sm text-secondary-600">
-                        {course.enrolledStudents || 0} students
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                        <Eye className="h-4 w-4 inline mr-1" />
-                        View
-                      </button>
-                      <button className="text-secondary-600 hover:text-secondary-700 text-sm font-medium">
-                        <Edit className="h-4 w-4 inline mr-1" />
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteCourse(course.id)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
-                      >
-                        <Trash2 className="h-4 w-4 inline mr-1" />
-                        Delete
-                      </button>
+                    <div className="p-4">
+                      <h4 className="font-semibold text-secondary-900 mb-2">{course.title}</h4>
+                      <p className="text-sm text-secondary-600 mb-2">by {course.instructor}</p>
+                      <div className="flex items-center justify-between text-sm text-secondary-500 mb-3">
+                        <span>{course.category}</span>
+                        <span>{course.level}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mb-3">
+                        <span className="text-secondary-600">{course.enrolledStudents} students</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {course.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setSelectedCourse(course)}
+                          className="flex-1 btn-primary text-sm py-2"
+                        >
+                          <Eye className="h-4 w-4 inline mr-1" />
+                          View
+                        </button>
+                        <button className="btn-secondary text-sm py-2 px-3">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCourse(course.id)}
+                          className="p-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -746,8 +655,8 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Instructors Tab */}
-          {selectedTab === 'instructors' && (
+          {/* Instructor Management Tab */}
+          {activeTab === 'instructors' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-secondary-900">Instructor Management</h3>
@@ -760,48 +669,44 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              {/* Search */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search instructors..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="input-field pl-10"
-                  />
-                </div>
-                <div></div>
-                <div className="flex items-center text-sm text-secondary-600">
-                  <span>{filteredInstructors.length} instructor{filteredInstructors.length !== 1 ? 's' : ''}</span>
-                </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search instructors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field pl-10"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredInstructors.map(instructor => (
-                  <div key={instructor.id} className="bg-white border border-secondary-200 rounded-lg p-6">
+                {filteredInstructors.map((instructor) => (
+                  <div key={instructor.id} className="bg-white rounded-xl shadow-sm border border-secondary-200 p-6">
                     <div className="flex items-center space-x-4 mb-4">
                       <img
-                        src={instructor.avatar}
+                        src={instructor.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'}
                         alt={instructor.name}
-                        className="w-16 h-16 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover"
                       />
                       <div>
                         <h4 className="font-semibold text-secondary-900">{instructor.name}</h4>
                         <p className="text-sm text-secondary-600">{instructor.email}</p>
-                        <p className="text-sm text-secondary-500">{instructor.department || 'Computer Science'}</p>
                       </div>
                     </div>
                     
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-secondary-600">Courses Teaching:</span>
-                        <span className="font-medium">{instructor.coursesTeaching?.length || 1}</span>
+                        <span className="text-secondary-600">Department:</span>
+                        <span className="text-secondary-900">{instructor.department || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-secondary-600">Courses:</span>
+                        <span className="text-secondary-900">{instructor.coursesTeaching?.length || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-secondary-600">Join Date:</span>
-                        <span>{new Date(instructor.joinDate).toLocaleDateString()}</span>
+                        <span className="text-secondary-900">{new Date(instructor.joinDate).toLocaleDateString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-secondary-600">Status:</span>
@@ -813,16 +718,13 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 mt-4 pt-4 border-t border-secondary-200">
+                    <div className="flex items-center space-x-2 mt-4">
                       <button className="flex-1 btn-primary text-sm py-2">
                         <Eye className="h-4 w-4 inline mr-1" />
                         View Profile
                       </button>
                       <button className="btn-secondary text-sm py-2 px-3">
                         <Mail className="h-4 w-4" />
-                      </button>
-                      <button className="btn-secondary text-sm py-2 px-3">
-                        <Edit className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -831,258 +733,431 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Analytics Tab */}
-          {selectedTab === 'analytics' && (
+          {/* Pending Approvals Tab */}
+          {activeTab === 'approvals' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-secondary-900">Pending Approvals</h3>
+              
+              {/* Pending Courses */}
+              <div>
+                <h4 className="font-medium text-secondary-900 mb-4">Course Approvals ({pendingCourses.filter(c => c.status === 'pending').length})</h4>
+                <div className="space-y-4">
+                  {pendingCourses.filter(course => course.status === 'pending').map((course) => (
+                    <div key={course.id} className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h5 className="font-semibold text-secondary-900 mb-2">{course.title}</h5>
+                          <p className="text-secondary-600 mb-2">{course.description}</p>
+                          <div className="flex items-center space-x-4 text-sm text-secondary-500">
+                            <span>by {course.instructor}</span>
+                            <span>{course.category}</span>
+                            <span>{course.level}</span>
+                            <span>Submitted: {new Date(course.submittedAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => handleApproveCourse(course.id)}
+                            className="btn-primary flex items-center space-x-1"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleRejectCourse(course.id)}
+                            className="btn-secondary flex items-center space-x-1 text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingCourses.filter(c => c.status === 'pending').length === 0 && (
+                    <p className="text-secondary-600 text-center py-8">No pending course approvals</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Pending Enrollments */}
+              <div>
+                <h4 className="font-medium text-secondary-900 mb-4">Enrollment Approvals ({pendingEnrollments.length})</h4>
+                <div className="space-y-4">
+                  {pendingEnrollments.map((enrollment) => (
+                    <div key={enrollment.id} className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <img
+                            src={enrollment.studentAvatar}
+                            alt={enrollment.studentName}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                          <div>
+                            <h5 className="font-medium text-secondary-900">{enrollment.studentName}</h5>
+                            <p className="text-sm text-secondary-600">{enrollment.studentEmail}</p>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-medium text-secondary-900">{enrollment.courseName}</p>
+                          <p className="text-sm text-secondary-600">
+                            Requested: {new Date(enrollment.requestedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleApproveEnrollment(enrollment.id)}
+                            className="btn-primary flex items-center space-x-1"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleRejectEnrollment(enrollment.id)}
+                            className="btn-secondary flex items-center space-x-1 text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingEnrollments.length === 0 && (
+                    <p className="text-secondary-600 text-center py-8">No pending enrollment requests</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* System Analytics Tab */}
+          {activeTab === 'analytics' && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-secondary-900">System Analytics</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm text-blue-600 font-medium">User Growth</div>
-                      <div className="text-2xl font-bold text-blue-700">+15%</div>
-                      <div className="text-xs text-blue-600">This month</div>
+                      <p className="text-sm font-medium text-secondary-600">User Growth</p>
+                      <p className="text-2xl font-bold text-secondary-900">+12%</p>
+                      <p className="text-xs text-green-600">This month</p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-blue-600" />
+                    <TrendingUp className="h-8 w-8 text-green-600" />
                   </div>
                 </div>
 
-                <div className="bg-green-50 rounded-lg p-4">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm text-green-600 font-medium">Course Completion</div>
-                      <div className="text-2xl font-bold text-green-700">78%</div>
-                      <div className="text-xs text-green-600">Average rate</div>
+                      <p className="text-sm font-medium text-secondary-600">Course Completion</p>
+                      <p className="text-2xl font-bold text-secondary-900">78%</p>
+                      <p className="text-xs text-blue-600">Average rate</p>
                     </div>
-                    <Award className="h-8 w-8 text-green-600" />
+                    <CheckCircle className="h-8 w-8 text-blue-600" />
                   </div>
                 </div>
 
-                <div className="bg-purple-50 rounded-lg p-4">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm text-purple-600 font-medium">Active Sessions</div>
-                      <div className="text-2xl font-bold text-purple-700">1,234</div>
-                      <div className="text-xs text-purple-600">Current users</div>
+                      <p className="text-sm font-medium text-secondary-600">Active Sessions</p>
+                      <p className="text-2xl font-bold text-secondary-900">234</p>
+                      <p className="text-xs text-purple-600">Current users</p>
                     </div>
-                    <Users className="h-8 w-8 text-purple-600" />
+                    <Activity className="h-8 w-8 text-purple-600" />
                   </div>
                 </div>
 
-                <div className="bg-orange-50 rounded-lg p-4">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm text-orange-600 font-medium">System Uptime</div>
-                      <div className="text-2xl font-bold text-orange-700">99.9%</div>
-                      <div className="text-xs text-orange-600">Last 30 days</div>
+                      <p className="text-sm font-medium text-secondary-600">System Uptime</p>
+                      <p className="text-2xl font-bold text-secondary-900">99.9%</p>
+                      <p className="text-xs text-green-600">Last 30 days</p>
                     </div>
-                    <Shield className="h-8 w-8 text-orange-600" />
+                    <Server className="h-8 w-8 text-green-600" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white border border-secondary-200 rounded-lg p-6">
-                <h4 className="font-medium text-secondary-900 mb-4">Platform Usage Trends</h4>
-                <div className="text-center py-8 text-secondary-600">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Analytics charts would be displayed here</p>
-                  <p className="text-sm mt-1">Integration with analytics service required</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+                  <h4 className="font-medium text-secondary-900 mb-4">System Health</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Cpu className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm text-secondary-700">CPU Usage</span>
+                      </div>
+                      <span className="text-sm font-medium text-secondary-900">45%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <HardDrive className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-secondary-700">Memory Usage</span>
+                      </div>
+                      <span className="text-sm font-medium text-secondary-900">62%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Database className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm text-secondary-700">Database</span>
+                      </div>
+                      <span className="text-sm font-medium text-green-600">Healthy</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Wifi className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm text-secondary-700">Network</span>
+                      </div>
+                      <span className="text-sm font-medium text-green-600">Stable</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
+                  <h4 className="font-medium text-secondary-900 mb-4">Recent Alerts</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-green-900">System backup completed</p>
+                        <p className="text-xs text-green-700">2 hours ago</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-900">High memory usage detected</p>
+                        <p className="text-xs text-yellow-700">6 hours ago</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                      <RefreshCw className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">System update available</p>
+                        <p className="text-xs text-blue-700">1 day ago</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* Reports Tab */}
-          {selectedTab === 'reports' && (
+          {activeTab === 'reports' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-secondary-900">System Reports</h3>
+              <h3 className="text-lg font-semibold text-secondary-900">Reports</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center space-x-3 mb-4">
                     <Users className="h-8 w-8 text-blue-600" />
                     <div>
                       <h4 className="font-semibold text-secondary-900">User Activity Report</h4>
-                      <p className="text-sm text-secondary-600">Detailed user engagement metrics</p>
+                      <p className="text-sm text-secondary-600">User engagement and activity metrics</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => exportData('users')}
-                    className="btn-primary w-full"
-                  >
-                    <Download className="h-4 w-4 inline mr-2" />
+                  <button className="btn-primary w-full">
+                    <Download className="h-4 w-4 mr-2" />
                     Generate Report
                   </button>
                 </div>
 
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center space-x-3 mb-4">
                     <BookOpen className="h-8 w-8 text-green-600" />
                     <div>
-                      <h4 className="font-semibold text-secondary-900">Course Performance Report</h4>
-                      <p className="text-sm text-secondary-600">Course enrollment and completion data</p>
+                      <h4 className="font-semibold text-secondary-900">Course Performance</h4>
+                      <p className="text-sm text-secondary-600">Course completion and engagement rates</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => exportData('courses')}
-                    className="btn-primary w-full"
-                  >
-                    <Download className="h-4 w-4 inline mr-2" />
+                  <button className="btn-primary w-full">
+                    <Download className="h-4 w-4 mr-2" />
                     Generate Report
                   </button>
                 </div>
 
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center space-x-3 mb-4">
-                    <Shield className="h-8 w-8 text-purple-600" />
+                    <GraduationCap className="h-8 w-8 text-purple-600" />
                     <div>
                       <h4 className="font-semibold text-secondary-900">Instructor Report</h4>
                       <p className="text-sm text-secondary-600">Instructor performance and statistics</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => exportData('instructors')}
-                    className="btn-primary w-full"
-                  >
-                    <Download className="h-4 w-4 inline mr-2" />
+                  <button className="btn-primary w-full">
+                    <Download className="h-4 w-4 mr-2" />
                     Generate Report
                   </button>
                 </div>
 
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center space-x-3 mb-4">
-                    <TrendingUp className="h-8 w-8 text-orange-600" />
+                    <BarChart3 className="h-8 w-8 text-orange-600" />
                     <div>
-                      <h4 className="font-semibold text-secondary-900">System Analytics Report</h4>
+                      <h4 className="font-semibold text-secondary-900">System Analytics</h4>
                       <p className="text-sm text-secondary-600">Platform usage and performance metrics</p>
                     </div>
                   </div>
                   <button className="btn-primary w-full">
-                    <Download className="h-4 w-4 inline mr-2" />
+                    <Download className="h-4 w-4 mr-2" />
                     Generate Report
                   </button>
                 </div>
 
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
                   <div className="flex items-center space-x-3 mb-4">
                     <FileText className="h-8 w-8 text-red-600" />
                     <div>
-                      <h4 className="font-semibold text-secondary-900">Financial Report</h4>
-                      <p className="text-sm text-secondary-600">Revenue and financial analytics</p>
-                    </div>
-                  </div>
-                  <button className="btn-primary w-full">
-                    <Download className="h-4 w-4 inline mr-2" />
-                    Generate Report
-                  </button>
-                </div>
-
-                <div className="bg-white border border-secondary-200 rounded-lg p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Calendar className="h-8 w-8 text-indigo-600" />
-                    <div>
                       <h4 className="font-semibold text-secondary-900">Custom Report</h4>
-                      <p className="text-sm text-secondary-600">Create custom reports with specific criteria</p>
+                      <p className="text-sm text-secondary-600">Create custom reports with specific metrics</p>
                     </div>
                   </div>
                   <button className="btn-primary w-full">
-                    <Plus className="h-4 w-4 inline mr-2" />
+                    <Plus className="h-4 w-4 mr-2" />
                     Create Custom
                   </button>
                 </div>
               </div>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* System Settings Tab */}
-          {selectedTab === 'settings' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-secondary-900">System Settings</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Course Approval Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Require admin approval for new courses
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Require admin approval for enrollments
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Auto-approve courses from verified instructors
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Notification Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Email notifications for pending approvals
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Daily admin reports
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Weekly system health reports
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Assignment Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Allow late submissions
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Enable automatic grading
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Send deadline reminders
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium text-secondary-900">Security Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Enable two-factor authentication
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      Log user activities
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Require strong passwords
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-secondary-200">
-                <button className="btn-primary">
-                  Save Settings
+      {/* User Detail Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-secondary-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-secondary-900">User Details</h3>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="text-secondary-400 hover:text-secondary-600"
+                >
+                  <X className="h-6 w-6" />
                 </button>
               </div>
             </div>
-          )}
+            
+            <div className="p-6">
+              <div className="flex items-center space-x-4 mb-6">
+                <img
+                  src={selectedUser.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'}
+                  alt={selectedUser.name}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+                <div>
+                  <h4 className="text-xl font-semibold text-secondary-900">{selectedUser.name}</h4>
+                  <p className="text-secondary-600">{selectedUser.email}</p>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                    selectedUser.role === 'admin' ? 'bg-red-100 text-red-800' :
+                    selectedUser.role === 'instructor' ? 'bg-blue-100 text-blue-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {selectedUser.role}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-secondary-600">Status</div>
+                  <div className="font-medium text-secondary-900">{selectedUser.status}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-secondary-600">Join Date</div>
+                  <div className="font-medium text-secondary-900">
+                    {new Date(selectedUser.joinDate).toLocaleDateString()}
+                  </div>
+                </div>
+                {selectedUser.department && (
+                  <div>
+                    <div className="text-sm text-secondary-600">Department</div>
+                    <div className="font-medium text-secondary-900">{selectedUser.department}</div>
+                  </div>
+                )}
+                {selectedUser.major && (
+                  <div>
+                    <div className="text-sm text-secondary-600">Major</div>
+                    <div className="font-medium text-secondary-900">{selectedUser.major}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Course Detail Modal */}
+      {selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-secondary-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-secondary-900">Course Details</h3>
+                <button
+                  onClick={() => setSelectedCourse(null)}
+                  className="text-secondary-400 hover:text-secondary-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex space-x-6">
+                <img
+                  src={selectedCourse.image}
+                  alt={selectedCourse.title}
+                  className="w-32 h-32 object-cover rounded-lg"
+                />
+                <div className="flex-1">
+                  <h4 className="text-xl font-semibold text-secondary-900 mb-2">{selectedCourse.title}</h4>
+                  <p className="text-secondary-600 mb-4">{selectedCourse.description}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-secondary-600">Instructor</div>
+                      <div className="font-medium text-secondary-900">{selectedCourse.instructor}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-secondary-600">Category</div>
+                      <div className="font-medium text-secondary-900">{selectedCourse.category}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-secondary-600">Level</div>
+                      <div className="font-medium text-secondary-900">{selectedCourse.level}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-secondary-600">Duration</div>
+                      <div className="font-medium text-secondary-900">{selectedCourse.duration}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-secondary-600">Students</div>
+                      <div className="font-medium text-secondary-900">
+                        {selectedCourse.enrolledStudents}/{selectedCourse.maxStudents}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-secondary-600">Status</div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedCourse.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedCourse.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
