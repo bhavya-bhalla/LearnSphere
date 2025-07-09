@@ -27,17 +27,18 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const getMenuItems = () => {
     if (user?.role === 'student') {
-      return [
-        { name: 'Dashboard', path: '/dashboard', icon: Home },
-        { name: 'My Courses', path: '/courses', icon: BookOpen },
-        { name: 'Assignments', path: '/assignments', icon: FileText },
-        { name: 'My Grades', path: '/grades', icon: Award },
-        { name: 'Quizzes', path: '/quizzes', icon: FileQuestion },
-        { name: 'Discussions', path: '/discussions', icon: MessageSquare },
-        { name: 'Course Notes', path: '/discussions/notes', icon: StickyNote },
-        { name: 'Notifications', path: '/notifications', icon: Bell },
-      ];
-    }
+  return [
+    { name: 'Dashboard', path: '/dashboard', icon: Home },
+    { name: 'My Courses', path: '/courses', icon: BookOpen },
+    { name: 'Assignments', path: '/assignments', icon: FileText },
+    { name: 'My Grades', path: '/grades', icon: Award },
+    { name: 'Quizzes', path: '/quizzes', icon: FileQuestion },
+    { name: 'Discussions', path: '/discussions', icon: MessageSquare },
+    { name: 'Course Notes', path: '/discussions/notes', icon: StickyNote },
+    { name: 'Notifications', path: '/notifications', icon: Bell },
+  ];
+}
+
 
     if (user?.role === 'instructor') {
       return [

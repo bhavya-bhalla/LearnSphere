@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-
+import ChatBotWidget from '../chatBotWidget';
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -24,6 +24,7 @@ const Layout = ({ children }) => {
         
         <main className={`main-content ${isAuthenticated ? 'with-sidebar' : ''}`}>
           {children}
+          <ChatBotWidget/>
         </main>
       </div>
     </div>
